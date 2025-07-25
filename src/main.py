@@ -5,10 +5,6 @@
 # توسعه‌دهنده: محمد زارع‌پور
 # آدرس وب‌هوک: https://687bb82b000dd20e48cb.nyc.appwrite.run/
 
-
-
-
-
 # کتابخانه‌های مورد نیاز
 import jdatetime  # برای کار با تاریخ شمسی
 import requests  # برای ارتباط با API بله
