@@ -15,7 +15,7 @@ API_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/getUpdates'
 SEND_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage'
 BASE_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}"  # آدرس پایه API بله
 
-sys1=" sys1 "
+sys1="appwrite mzporsony "
 log1=sys1
 # تنظیمات کلاس‌ها
 CLASSES = {
