@@ -1,9 +1,11 @@
-#  اضافه شدن ثبت نام خصوصی و ورود دادن موبایل 
-#  تنظیم سناریو ثبت نام دستی  دقیق
 # ربات مدیریت تمرین‌های تلاوت قرآن
 # نسخه ۳.۰
 # توسعه‌دهنده: محمد زارع‌پور
-# آدرس وب‌هوک: https://687bb82b000dd20e48cb.nyc.appwrite.run/
+#   مرداد4 شنبه  ساعت 8:31 شروع 
+#  7/26/25
+
+# # در گیت سیستم1 بعد  پاینوت مین11  دیگه اینجا ورژن میزنم. و شروع شد. 
+#  در گیت sys بعد main11  
 
 # کتابخانه‌های مورد نیاز
 import jdatetime  # برای کار با تاریخ شمسی
@@ -16,20 +18,15 @@ import os  # برای بررسی وجود فایل
 
 # تنظیمات اولیه سیستم ثبت گزارش
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 # متغیر اسم سیستم - قابل تغییر برای محل‌های مختلف اجرا
-sys1 = "sys1"
-log1=sys1
-
+log1=sys1= "main git sys2 "
 # توکن ربات (در محیط تولید باید از متغیر محیطی استفاده شود)
-#BOT_TOKEN = "1423205711:aNMfw7aEfrMwHNITw4S7bTs9NP92MRzcDLg19Hjo"  # توکن تست
-BOT_TOKEN = "811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1"   
-
 #BOT_TOKEN = '1423205711:aNMfw7aEfrMwHNITw4S7bTs9NP92MRzcDLg19Hjo'# یار ثبت نام 
-#BOT_TOKEN = '811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1'  #یار مربی
+BOT_TOKEN = '811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1'  #یار مربی
 #BOT_TOKEN = '1714651531:y2xOK6EBg5nzVV6fEWGqtOdc3nVqVgOuf4PZVQ7S'#یار مدیر
-# توکن رباتت
- # یار مربی توکن اصلی
+# یار مربی توکن اصلی
+API_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/getUpdates'
+SEND_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage'
 BASE_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}"  # آدرس پایه API بله
 
 # اطلاعات کلاس‌ها
