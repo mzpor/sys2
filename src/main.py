@@ -14,11 +14,15 @@ import time     # برای کار با زمان
 import re       # برای کار با عبارات منظم
 import logging  # برای ثبت گزارش‌ها
 import os  # برای بررسی وجود فایل
+import sys
+
+
 
 # تنظیمات اولیه سیستم ثبت گزارش
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # متغیر اسم سیستم - قابل تغییر برای محل‌های مختلف اجرا
 log1=sys1= "main git sys2 "
+delay = 0.2
 # توکن ربات (در محیط تولید باید از متغیر محیطی استفاده شود)
 #BOT_TOKEN = '1423205711:aNMfw7aEfrMwHNITw4S7bTs9NP92MRzcDLg19Hjo'# یار ثبت نام 
 BOT_TOKEN = '811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1'  #یار مربی
@@ -132,11 +136,12 @@ def send_message(chat_id, text, reply_markup=None):
         dict: پاسخ JSON از API، یا None در صورت بروز خطا
     """
     url = f"{BASE_URL}/sendMessage"  # ساخت آدرس API برای ارسال پیام
+    
     data = {
         "chat_id": chat_id,      # شناسه چت هدف
-        "text": text,            # متن پیام
-        "parse_mode": "Markdown"  # پشتیبانی از قالب‌بندی مارک‌داون
+        "text": text             # متن اصلی بدون parse_mode
     }
+    
     if reply_markup:
         data['reply_markup'] = json.dumps(reply_markup)  # افزودن دکمه‌ها در صورت وجود
     
@@ -146,7 +151,9 @@ def send_message(chat_id, text, reply_markup=None):
         if response.ok:
             return response.json()  # برگرداندن پاسخ در صورت موفقیت
         else:
-            logging.error(f"خطا در ارسال پیام: {response.status_code}")
+            logging.error(f"خطا در ارسال پیام: {response.status_code} - {response.text}")
+            logging.error(f"متن ارسالی: {text}")
+            logging.error(f"داده‌های ارسالی: {data}")
             return None
     except requests.exceptions.RequestException as e:
         logging.error(f"خطای شبکه: {e}")
@@ -417,7 +424,8 @@ def handle_payment_completion(chat_id, user_id):
         }
         save_users_to_file()
 
-        send_message(chat_id, f"تبریک می‌گوییم! ثبت‌نام شما در کلاس *{class_name}* با موفقیت انجام شد.\nلینک ورود به کلاس به زودی برای شما ارسال خواهد شد.\n\nاز همراهی شما سپاسگزاریم!\n\nلینک کانال آموزشی: [لینک کانال](https://t.me/your_educational_channel)")
+        success_message = f"تبریک می‌گوییم! ثبت‌نام شما در کلاس *{class_name}* با موفقیت انجام شد.\nلینک ورود به کلاس به زودی برای شما ارسال خواهد شد.\n\nاز همراهی شما سپاسگزاریم!\n\nلینک کانال آموزشی: [لینک کانال](https://t.me/your_educational_channel)"
+        send_message(chat_id, success_message)
         private_signup_states[user_id]['step'] = 'registered'
     else:
         send_message(chat_id, "خطا در تکمیل فرآیند پرداخت. لطفا دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.")
@@ -981,7 +989,8 @@ def process_message(message):
 
                 ])
           
-            send_message(chat_id, f"{sys1} \n\nبه ربات تلاوت خوش آمدید!\nبرای مشاهده قابلیت‌های ربات، روی دکمه زیر کلیک کنید:", reply_markup=keyboard)
+            welcome_text = f"{sys1} \n\nبه ربات تلاوت خوش آمدید!\nبرای مشاهده قابلیت‌های ربات، روی دکمه زیر کلیک کنید:"
+            send_message(chat_id, welcome_text, reply_markup=keyboard)
            # send_message(chat_id,     f"{سیستم1}\n\n"    "به ربات\n"    "تلاوت خوش آمدید!\n"    "برای مشاهده قابلیت‌های ربات، روی دکمه زیر کلیک کنید:",     reply_markup=keyboard)
             state['step'] = 'waiting_for_bot_features_command'
             return          
@@ -1119,6 +1128,9 @@ def main():
     - مدیریت خطاها و وقفه‌ها
     """
     logging.info("Bot1 started1..{} ".format(log1))
+    #print(sys.executable)
+    #logging.info("Python executable path: %s", sys.executable)
+
     offset = None  # شناسه آخرین به‌روزرسانی پردازش شده
     
     while True:
@@ -1132,7 +1144,7 @@ def main():
                         chat_id = message['chat']['id']    
                         text = message.get('text', '') 
                         # 💖 قلب محمد: لاگ شخصی
-                        print(f'from {sys1} ...recieved message from {chat_id} with: {text}')
+                        print(f'from :{sys1} ...recieved message from {chat_id} with: {text}')
                         logging.debug(f"Processing message: {update['message']}")
                         process_message(update['message'])
                         process_new_chat_member(update['message'])
@@ -1146,18 +1158,20 @@ def main():
                         chat_id = message['chat']['id']    
                         text = message.get('text', '') 
                         # 💖 قلب محمد: لاگ شخصی
-                        print(f'from {sys1} ...recieved message from {chat_id} with: {text}')
+                        print(f'from :{sys1} ...recieved message from {chat_id} with: {text}')
                         logging.info(f"Received callback_query: {update['callback_query']['data']}")
                         handle_callback_query(update['callback_query'])
                     # به‌روزرسانی شناسه آخرین پیام پردازش شده
                     offset = update['update_id'] + 1
-            time.sleep(1)  # تاخیر برای جلوگیری از فشار به سرور
+            time.sleep(0.5)  # تاخیر برای جلوگیری از فشار به سرور
         except KeyboardInterrupt:
             logging.info("Bot stopped by user")
             break
         except Exception as e:
             logging.error(f"General error: {str(e)} - Traceback: {str(type(e).__name__)}")
-            time.sleep(5)  # تاخیر بیشتر در صورت بروز خطا
+            delay = min(delay + 2, 10)  # با هر خطا، تأخیر زیاد بشه تا 10 ثانیه
+            #time.sleep(delay)
+            time.sleep(10)  # تاخیر بیشتر در صورت بروز خطا
 
 if __name__ == "__main__":
     main()
