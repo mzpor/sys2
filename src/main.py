@@ -167,8 +167,8 @@ def get_chat_administrators(chat_id):
     
     try:
         # ارسال درخواست POST به API با مهلت ۱۰ ثانیه
-        response = requests.post(url, json=data, timeout=10)
-        if response.ok:
+        response = requests.get(url, json=data, timeout=10)
+        if response.ok: 
             result = response.json()
             if result.get('ok'):
                 return result.get('result', [])  # برگرداندن لیست ادمین‌ها
@@ -1128,12 +1128,25 @@ def main():
             if updates and updates.get('ok'):
                 for update in updates.get('result', []):
                     if 'message' in update:
+                        message = update['message']    
+                        chat_id = message['chat']['id']    
+                        text = message.get('text', '') 
+                        # 💖 قلب محمد: لاگ شخصی
+                        print(f'from {sys1} ...recieved message from {chat_id} with: {text}')
                         logging.debug(f"Processing message: {update['message']}")
                         process_message(update['message'])
                         process_new_chat_member(update['message'])
                         handle_recitation_exercise(update['message'])
                         handle_admin_score(update['message'])
                     elif 'callback_query' in update:
+                        callback = update['callback_query']    
+                        message = callback['message']
+                        
+                        #message = update['message']    
+                        chat_id = message['chat']['id']    
+                        text = message.get('text', '') 
+                        # 💖 قلب محمد: لاگ شخصی
+                        print(f'from {sys1} ...recieved message from {chat_id} with: {text}')
                         logging.info(f"Received callback_query: {update['callback_query']['data']}")
                         handle_callback_query(update['callback_query'])
                     # به‌روزرسانی شناسه آخرین پیام پردازش شده
