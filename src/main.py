@@ -6,7 +6,7 @@
 
 #اول  تصححیح ثبت نام 
 
-# کتابخانه‌های مورد نیاز
+# کتابخانه‌های مورد نیاز  mzpor
 import jdatetime  # برای کار با تاریخ شمسی
 import requests  # برای ارتباط با API بله
 import json      # برای کار با داده‌های JSON
@@ -1127,7 +1127,7 @@ def main():
     - پردازش پیام‌ها و دستورات
     - مدیریت خطاها و وقفه‌ها
     """
-    logging.info("Bot1 started1..{} ".format(log1))
+    logging.info("Bot from {} started1.. ".format(log1))
     #print(sys.executable)
     #logging.info("Python executable path: %s", sys.executable)
 
