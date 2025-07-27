@@ -9,6 +9,8 @@
 
 #اول  تصححیح ثبت نام 
 
+
+
 # کتابخانه‌های مورد نیاز  mzpor
 import jdatetime  # برای کار با تاریخ شمسی
 import requests  # برای ارتباط با API بله
@@ -392,82 +394,29 @@ TXT_FILE = '1.txt'
 
 def show_main_menu(chat_id, user_id):
     """نمایش منوی اصلی با دکمه‌های شیشه‌ای و پایین."""
-    # Check if user is registered
-    if user_id in registered_users:
-        # Registered user - show original menu
-        # دکمه‌های شیشه‌ای (بالا)
-        inline_buttons = [
-            [{'text': '📚 ثبت نام در مدرسه تلاوت', 'callback_data': 'school_registration'}],
-            [{'text': '👤 حساب کاربری', 'callback_data': 'user_account'}]
-        ]
-        inline_keyboard = create_keyboard(inline_buttons, is_inline=True)
-        
-        # دکمه‌های پایین
-        bottom_buttons = [
-            [{'text': '📊 نظر سنجی', 'callback_data': 'survey'}],
-            [{'text': 'ℹ️ در رابطه با ربات', 'callback_data': 'about_bot'}]
-        ]
-        bottom_keyboard = create_keyboard(bottom_buttons, is_inline=False)
-        
-        # ترکیب دکمه‌ها
-        combined_keyboard = {
-            "inline_keyboard": inline_keyboard.get("inline_keyboard", []),
-            "keyboard": bottom_keyboard.get("keyboard", []),
-            "resize_keyboard": True,
-            "one_time_keyboard": False
-        }
-        
-        send_message(chat_id, f"{log1} \n\nبه ربات تلاوت خوش آمدید! لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=combined_keyboard)
-    else:
-        # New user - show different menu
-        # دکمه‌های شیشه‌ای (بالا)
-        inline_buttons = [
-            [{'text': '🏫 معرفی مدرسه تلاوت', 'callback_data': 'school_introduction'}],
-            [{'text': '📚 ثبت نام در مدرسه تلاوت', 'callback_data': 'school_registration'}]
-        ]
-        inline_keyboard = create_keyboard(inline_buttons, is_inline=True)
-        
-        # دکمه‌های پایین
-        bottom_buttons = [
-            [{'text': '📊 نظر سنجی', 'callback_data': 'survey'}],
-            [{'text': 'ℹ️ در رابطه با ربات', 'callback_data': 'about_bot'}]
-        ]
-        bottom_keyboard = create_keyboard(bottom_buttons, is_inline=False)
-        
-        # ترکیب دکمه‌ها
-        combined_keyboard = {
-            "inline_keyboard": inline_keyboard.get("inline_keyboard", []),
-            "keyboard": bottom_keyboard.get("keyboard", []),
-            "resize_keyboard": True,
-            "one_time_keyboard": False
-        }
-        
-        send_message(chat_id, f"{log1} \n\nبه ربات تلاوت خوش آمدید! لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=combined_keyboard)
-
-def handle_school_introduction(chat_id, user_id):
-    """معرفی مدرسه تلاوت برای کاربران جدید."""
-    intro_text = "🏫 معرفی مدرسه تلاوت قرآن\n\n"
-    intro_text += "🌟 مدرسه تلاوت قرآن، مرکزی تخصصی برای آموزش تلاوت قرآن کریم است.\n\n"
-    intro_text += "📚 خدمات ما:\n"
-    intro_text += "• آموزش تلاوت قرآن با اساتید مجرب\n"
-    intro_text += "• کلاس‌های حضوری و آنلاین\n"
-    intro_text += "• برنامه‌های متنوع برای همه سطوح\n"
-    intro_text += "• گواهی پایان دوره معتبر\n\n"
-    intro_text += "🎯 اهداف آموزشی:\n"
-    intro_text += "• یادگیری اصول صحیح تلاوت\n"
-    intro_text += "• تقویت صوت و لحن\n"
-    intro_text += "• آشنایی با قواعد تجوید\n"
-    intro_text += "• آمادگی برای مسابقات قرآنی\n\n"
-    intro_text += "📞 برای اطلاعات بیشتر و ثبت نام، با ما در تماس باشید."
+    # دکمه‌های شیشه‌ای (بالا)
+    inline_buttons = [
+        [{'text': '📚 ثبت نام در مدرسه تلاوت', 'callback_data': 'school_registration'}],
+        [{'text': '👤 حساب کاربری', 'callback_data': 'user_account'}]
+    ]
+    inline_keyboard = create_keyboard(inline_buttons, is_inline=True)
     
     # دکمه‌های پایین
     bottom_buttons = [
-        [{'text': '📚 ثبت نام در مدرسه', 'callback_data': 'school_registration'}],
-        [{'text': '🔙 بازگشت به منو', 'callback_data': 'back_to_main_menu'}]
+        [{'text': '📊 نظر سنجی', 'callback_data': 'survey'}],
+        [{'text': 'ℹ️ در رابطه با ربات', 'callback_data': 'about_bot'}]
     ]
     bottom_keyboard = create_keyboard(bottom_buttons, is_inline=False)
     
-    send_message(chat_id, intro_text, reply_markup=bottom_keyboard)
+    # ترکیب دکمه‌ها
+    combined_keyboard = {
+        "inline_keyboard": inline_keyboard.get("inline_keyboard", []),
+        "keyboard": bottom_keyboard.get("keyboard", []),
+        "resize_keyboard": True,
+        "one_time_keyboard": False
+    }
+    
+    send_message(chat_id, f"{log1} \n\nبه ربات تلاوت خوش آمدید! لطفاً یکی از گزینه‌های زیر را انتخاب کنید:", reply_markup=combined_keyboard)
 
 def start_registration(chat_id, user_id):
     """شروع فرآیند ثبت‌نام جدید."""
@@ -561,26 +510,33 @@ def start_name_registration(chat_id, user_id):
 
 def show_name_confirmation(chat_id, user_id, first_name, last_name):
     """نمایش تایید نام و درخواست شماره تلفن."""
-    # فقط دکمه پایین با request_contact
+    # ترکیب نام و نام خانوادگی
+    full_name = f"{first_name} {last_name}".strip()
+    message_text = f"نام و فامیل: {full_name}\n\nلطفاً شماره تلفن خود را ارسال کنید:"
+    
+    # دکمه‌های شیشه‌ای (بالا)
+    inline_buttons = [
+        [{'text': '✏️ تصحیح نام', 'callback_data': 'edit_name'}]
+    ]
+    inline_keyboard = create_keyboard(inline_buttons, is_inline=True)
+    
+    # دکمه‌های پایین
     bottom_keyboard = {
         "keyboard": [[{"text": "📱 ارسال شماره تلفن", "request_contact": True}]],
         "resize_keyboard": True,
         "one_time_keyboard": False
     }
     
-    # ترکیب نام و نام خانوادگی
-    full_name = f"{first_name} {last_name}".strip()
-    message_text = f"نام و فامیل: {full_name}\n\nلطفاً شماره تلفن خود را ارسال کنید:"
+    # ترکیب دکمه‌ها
+    combined_keyboard = {
+        "inline_keyboard": inline_keyboard.get("inline_keyboard", []),
+        "keyboard": bottom_keyboard.get("keyboard", []),
+        "resize_keyboard": True,
+        "one_time_keyboard": False
+    }
     
-    # پیام با دکمه پایین بفرست
-    send_message(chat_id, message_text, reply_markup=bottom_keyboard)
-    
-    # بعد دکمه شیشه‌ای تصحیح رو جداگانه بفرست
-    inline_buttons = [
-        [{'text': '✏️ تصحیح نام', 'callback_data': 'edit_name'}]
-    ]
-    inline_keyboard = create_keyboard(inline_buttons, is_inline=True)
-    send_message(chat_id, "", reply_markup=inline_keyboard)
+    # پیام با هر دو دکمه بفرست
+    send_message(chat_id, message_text, reply_markup=combined_keyboard)
 
 def show_phone_input_request(chat_id, user_id):
     """درخواست شماره تلفن با دکمه‌های پایین."""
@@ -1233,8 +1189,6 @@ def handle_callback_query(message):
         handle_survey(chat_id, user_id)
     elif callback_data == 'about_bot':
         handle_about_bot(chat_id, user_id)
-    elif callback_data == 'school_introduction':
-        handle_school_introduction(chat_id, user_id)
     elif callback_data == 'back_to_main_menu':
         show_main_menu(chat_id, user_id)
     elif callback_data == 'new_class_registration':

@@ -2,10 +2,10 @@ import requests
 import time
 import json
 
-
-
+#from main import sys1
 
 # تنظیمات ربات
+log1=sys1="sys1 "
 
 #BOT_TOKEN = '1423205711:aNMfw7aEfrMwHNITw4S7bTs9NP92MRzcDLg19Hjo'# یار ثبت نام 
 BOT_TOKEN = '811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1'  #یار مربی
@@ -14,9 +14,6 @@ BOT_TOKEN = '811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1'  #یار مرب
 API_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/getUpdates'
 SEND_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage'
 BASE_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}"  # آدرس پایه API بله
-
-
-log1=sys1=="appwrite mzpor sony "
 # تنظیمات کلاس‌ها
 CLASSES = {
     '1': {
