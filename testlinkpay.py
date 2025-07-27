@@ -23,7 +23,7 @@ BOT_TOKEN = "811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1"  # توکن و�
 updater = Updater(token=BOT_TOKEN)
 
 # شماره تلفن مقصد برای انتقال پول
-DESTINATION_PHONE = "09XXXXXXXXXX"  # شماره تلفن مقصد را وارد کنید
+DESTINATION_PHONE = "09102175431"  # شماره تلفن مقصد را وارد کنید
 
 # لینک گروه برای ارسال به کاربر
 GROUP_LINK = "https://ble.ir/join/XXXXXX"  # لینک گروه را جای‌گذاری کنید
