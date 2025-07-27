@@ -1,3 +1,4 @@
+#ورژن 3
 import requests
 import json
 import time
@@ -6,7 +7,7 @@ import os
 
 BOT_TOKEN = "811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1"
 BASE_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}"
-DATA_FILE = "1.txt"  # تغییر به 1.txt
+DATA_FILE = "1.txt"
 
 quotes = [
     "تمرین تلاوت زندگی‌ات را تغییر می‌دهد! 🌟",
@@ -25,7 +26,7 @@ def send_message(chat_id, text, reply_markup=None):
     if reply_markup:
         payload["reply_markup"] = reply_markup
     response = requests.post(f"{BASE_URL}/sendMessage", json=payload)
-    return response.json()  # برای دریافت message_id
+    return response.json()
 
 def create_inline_keyboard(buttons):
     keyboard = {"inline_keyboard": buttons}
@@ -53,8 +54,8 @@ def save_user_data(chat_id, data):
     users[str(chat_id)] = data
     with open(DATA_FILE, "w", encoding="utf-8") as file:
         for chat_id_str, user_data in users.items():
-            file.write(f"{chat_id_str} | {json.dumps(user_data)}\n")
-    print(f"داده‌ها ذخیره شدند: {data}")  # دیباگ
+            file.write(f"{chat_id_str} | {json.dumps(user_data, ensure_ascii=False)}\n")  # ensure_ascii=False برای فارسی
+    print(f"داده‌ها ذخیره شدند: {data}")
 
 def load_user_data(chat_id):
     if os.path.exists(DATA_FILE):
@@ -121,7 +122,7 @@ def main():
                         last_message_ids[chat_id] = sent_message["result"]["message_id"]
                     elif text == "نظرسنجی":
                         if user_data and "survey" not in user_data:
-                            sent_message = send_message(chat_id, "لطفاً نظرتون رو بفرستید:", reply_markup=create_reply_keyboard())
+                            sent_message = send_message(chat_id, "لطفاً نظرتون رو انتخاب کنید:\n- خوب\n- بد\n- نیاز به بهبود", reply_markup=create_reply_keyboard())
                         else:
                             sent_message = send_message(chat_id, f"نظر قبلی شما: {user_data.get('survey', 'ندارد')}", reply_markup=create_reply_keyboard())
                         last_message_ids[chat_id] = sent_message["result"]["message_id"]
@@ -134,6 +135,7 @@ def main():
                     elif user_data and user_data.get("step") == "full_name":
                         user_data["full_name"] = text
                         user_data["first_name"] = text.split()[0] if text.split() else text
+                        user_data["chat_id"] = chat_id  # اضافه کردن ایدی
                         user_data["step"] = "phone"
                         save_user_data(chat_id, user_data)
                         inline_buttons = [
@@ -158,12 +160,13 @@ def main():
                         user_data["step"] = "complete"
                         save_user_data(chat_id, user_data)
                         inline_buttons = [
-                            [{"text": "ورود به انتخاب کلاس", "callback_data": "select_class"}]
+                            [{"text": "تصحیح کد ملی", "callback_data": "edit_national_id"}],
+                            [{"text": "انتخاب کلاس", "callback_data": "select_class"}]
                         ]
                         sent_message = send_message(chat_id, f"حساب کاربری:\nنام: {user_data['first_name']}\nموبایل: {user_data['phone']}\nکد ملی: {text}", reply_markup=create_reply_keyboard())
                         send_message(chat_id, "", reply_markup=create_inline_keyboard(inline_buttons))
                         last_message_ids[chat_id] = sent_message["result"]["message_id"]
-                    elif text and user_data and "survey" not in user_data:
+                    elif text in ["خوب", "بد", "نیاز به بهبود"] and user_data:
                         user_data["survey"] = text
                         save_user_data(chat_id, user_data)
                         sent_message = send_message(chat_id, f"نظر شما ثبت شد: {text}", reply_markup=create_reply_keyboard())
@@ -174,10 +177,10 @@ def main():
                     chat_id = query["message"]["chat"]["id"]
                     data = query["data"]
                     query_id = query["id"]
-
                     user_data = load_user_data(chat_id)
+
                     if data == "register" and not user_data:
-                        user_data = {"step": "full_name"}
+                        user_data = {"step": "full_name", "chat_id": chat_id}
                         save_user_data(chat_id, user_data)
                         sent_message = send_message(chat_id, "لطفاً نام و نام خانوادگی خود را وارد کنید:", reply_markup=create_reply_keyboard())
                         last_message_ids[chat_id] = sent_message["result"]["message_id"]
@@ -199,7 +202,12 @@ def main():
                         sent_message = send_message(chat_id, "لطفاً نام و نام خانوادگی جدید را وارد کنید:", reply_markup=create_reply_keyboard())
                         last_message_ids[chat_id] = sent_message["result"]["message_id"]
                     elif data == "send_phone" and user_data and user_data.get("step") == "phone":
-                        sent_message = send_message(chat_id, "لطفاً شماره تلفن خود را از طریق اپلیکیشن بله ارسال کنید:", reply_markup=create_reply_keyboard())
+                        sent_message = send_message(chat_id, "لطفاً شماره تلفن خود را از طریق اپلیکیشن بله ارسال کنید یا دستی وارد کنید:", reply_markup=create_reply_keyboard())
+                        last_message_ids[chat_id] = sent_message["result"]["message_id"]
+                    elif data == "edit_national_id" and user_data and user_data.get("step") == "complete":
+                        user_data["step"] = "national_id"
+                        save_user_data(chat_id, user_data)
+                        sent_message = send_message(chat_id, "لطفاً کد ملی جدید را وارد کنید:", reply_markup=create_reply_keyboard())
                         last_message_ids[chat_id] = sent_message["result"]["message_id"]
                     elif data == "select_class" and user_data and user_data.get("step") == "complete":
                         classes = [
