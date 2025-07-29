@@ -1,8 +1,33 @@
 {
-    "admin": {
-        "chat_id": 1114227010,
-        "state": "waiting_first_name"
+  "admin": {
+    "full_name": "راه طیف",
+    "user_id": "574330749",
+    "national_id": "0085478181"
+  },
+  "classes": [
+    {
+      "name": "رشوند",
+      "section": "تجوید",
+      "price": "۱۰۰",
+      "link": "A.htm"
     },
-    "classes": [],
-    "coaches": []
+    {
+      "name": "محمد",
+      "section": "صوت",
+      "price": "۲۰۰",
+      "link": "ل"
+    },
+    {
+      "name": "لحن",
+      "section": "لحنی",
+      "price": "۳۰۰",
+      "link": "ب"
+    }
+  ],
+  "temp_class": {
+    "name": "لحن",
+    "section": "لحنی",
+    "price": "۳۰۰",
+    "link": "ب"
+  }
 }
