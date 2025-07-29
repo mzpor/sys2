@@ -1,3 +1,4 @@
+#کلاو پیشرفته 
 import jdatetime  # برای کار با تاریخ شمسی
 import requests  # برای ارتباط با API بله
 import json      # برای کار با داده‌های JSON
@@ -8,10 +9,21 @@ import os  # برای بررسی وجود فایل
 import sys
 
 # تنظیمات اصلی
-BOT_TOKEN = '811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1'
+BOT_TOKEN = "1778171143:vD6rjJXAYidLL7hQyQkBeu5TJ9KpRd4zAKegqUt3"
 API_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/getUpdates'
 SEND_URL = f'https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage'
 BASE_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}"
+
+
+# توکن‌های ربات و پرداخت
+
+    
+#BOT_TOKEN = "811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1"# morabibot
+
+
+PAYMENT_TOKEN = "WALLET-LIiCzxGZnCd58Obr" #برای دیباگ با توکن  شروع کنید
+BASE_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}"
+GROUP_LINK = "ble.ir/join/Gah9cS9LzQ"  #روم تست  ربات 
 
 # اطلاعات پرداخت
 WALLET_TOKEN = "WALLET-CUoV4RarlAACmThc"
