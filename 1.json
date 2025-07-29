@@ -1,9 +1,8 @@
 {
-  "574330749": {
-    "full_name": "محمد همراه ۲",
-    "first_name": "محمد",
-    "national_id": "0064728171",
-    "phone": "989942878984"
-  },
-  "1114227010": {}
+    "admin": {
+        "chat_id": 1114227010,
+        "state": "waiting_first_name"
+    },
+    "classes": [],
+    "coaches": []
 }
