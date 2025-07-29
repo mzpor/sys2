@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import time
 import re
@@ -24,8 +23,6 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-user_data = load_data()
-
 # 🎯 ارسال پیام همراه با کیبورد
 def send_message(chat_id, text, reply_markup=None):
     payload = {
@@ -49,8 +46,14 @@ def make_inline_keyboard(buttons):
 def is_valid_national_id(nid):
     return bool(re.fullmatch(r"\d{10}", nid))
 
+# 🧠 مدیریت وضعیت کاربر در حافظه
+user_states = {}  # برای ذخیره وضعیت موقت کاربران در حافظه (رم)
+
 # 🔁 مدیریت هر آپدیت
 def handle_update(update):
+    global user_states
+    user_data = load_data()  # بارگذاری اطلاعات از فایل JSON
+
     if "message" in update:
         message = update["message"]
         text = message.get("text", "")
@@ -58,15 +61,17 @@ def handle_update(update):
         user_id = str(chat_id)
         contact = message.get("contact")
 
-        # مرحله: شروع
+        # مرحله: شروع یا شروع مجدد
         if text == "/start" or text == "شروع مجدد":
+            user_states[user_id] = {}  # پاک کردن وضعیت موقت در حافظه
             if user_id in user_data and "full_name" in user_data[user_id]:
                 first_name = user_data[user_id]["first_name"]
                 full_name = user_data[user_id]["full_name"]
                 national_id = user_data[user_id].get("national_id", "هنوز مانده")
                 phone = user_data[user_id].get("phone", "هنوز مانده")
                 
-                send_message(chat_id,
+                send_message(
+                    chat_id,
                     f"_🌟 {first_name} عزیز، خوش آمدی!\n"
                     f"حساب کاربری شما آماده است 👇_\n"
                     f"*نام*: {full_name}\n"
@@ -78,41 +83,38 @@ def handle_update(update):
                     ])
                 )
             else:
-                user_data[user_id] = {}  # فقط اگر ثبت‌نام نکرده، جدید بساز
-                send_message(  chat_id, "_🌟 خوش آمدید! به ربات ثبت‌نام آموزشگاه خوش آمدید!_",
-                    reply_markup=make_keyboard([["شروع مجدد", "معرفی آموزشگاه", "خروج"]])
+                send_message(
+                    chat_id,
+                    "_🌟 خوش آمدید! به ربات ثبت‌نام آموزشگاه خوش آمدید!_\n"
+                    "برای شروع ثبت‌نام روی دکمه زیر بزنید:",
+                    reply_markup=make_inline_keyboard([
+                        [{"text": "📝 شروع ثبت‌نام", "callback_data": "start_registration"}]
+                    ])
                 )
-            """
-            send_message( chat_id, "_🌟 خوش آمدید! به ربات ثبت‌نام آموزشگاه خوش آمدید!_",
-                reply_markup={ "keyboard": [[{"text": "شروع مجدد"}, {"text": "معرفی آموزشگاه"}, {"text": "خروج"}]], "resize_keyboard": True                }
-            )
-            send_message(
-                chat_id,
-                "برای شروع ثبت‌نام روی دکمه زیر بزنید:",
-                reply_markup=make_inline_keyboard(
-                    [[{"text": "📝 شروع ثبت‌نام", "callback_data": "start_registration"}]]
-                )
-            )"""
-
-           
-        elif user_id in user_data:
-            state = user_data[user_id]
+        
+        # مدیریت مراحل ثبت‌نام
+        elif user_id in user_states:
+            state = user_states[user_id]
             
             # مرحله: نام
             if "full_name" not in state:
-                user_data[user_id]["full_name"] = text
-                user_data[user_id]["first_name"] = text.split()[0]
-                save_data(user_data)
-                send_message(chat_id, f"_{state['first_name']} عزیز،\nنام شما: {text}\nکد ملی: هنوز مانده\nتلفن: هنوز مانده_\n\nلطفاً کد ملی ۱۰ رقمی خود را وارد کنید.",
-                    reply_markup=make_keyboard([["شروع مجدد", "خروج", "برگشت به قبل"]]))
-                send_message(chat_id, "می‌خواهید نام را ویرایش کنید؟",
-                    reply_markup=make_inline_keyboard([[{"text": "✏️ تصحیح نام", "callback_data": "edit_name"}]]))
+                state["full_name"] = text
+                state["first_name"] = text.split()[0]
+                send_message(
+                    chat_id,
+                    f"_{state['first_name']} عزیز،\nنام شما: {text}\nکد ملی: هنوز مانده\nتلفن: هنوز مانده_\n\nلطفاً کد ملی ۱۰ رقمی خود را وارد کنید.",
+                    reply_markup=make_keyboard([["شروع مجدد", "خروج", "برگشت به قبل"]])
+                )
+                send_message(
+                    chat_id,
+                    "می‌خواهید نام را ویرایش کنید؟",
+                    reply_markup=make_inline_keyboard([[{"text": "✏️ تصحیح نام", "callback_data": "edit_name"}]])
+                )
             
             # مرحله: کد ملی
             elif "national_id" not in state:
                 if is_valid_national_id(text):
-                    user_data[user_id]["national_id"] = text
-                    save_data(user_data)
+                    state["national_id"] = text
                     send_message(
                         chat_id,
                         f"_{state['first_name']} عزیز،\nنام شما: {state['full_name']}\nکد ملی: {text}\nتلفن: هنوز مانده_\n\n📱 لطفاً شماره تلفن خود را با دکمه زیر ارسال کنید.",
@@ -128,14 +130,13 @@ def handle_update(update):
                     )
                 else:
                     send_message(chat_id, "_❌ کد ملی نامعتبر است. لطفاً ۱۰ رقم وارد کنید._")
+            
             # مرحله: شماره تلفن
             elif "phone" not in state and contact:
-                user_data[user_id]["phone"] = contact["phone_number"]
-                save_data(user_data)
-                phone = user_data[user_id]["phone"]
+                state["phone"] = contact["phone_number"]
                 send_message(
                     chat_id,
-                    f"_📋 {state['first_name']} عزیز، حساب کاربری شما:\nنام: {state['full_name']}\nکد ملی: {state['national_id']}\nتلفن: {phone}_",
+                    f"_📋 {state['first_name']} عزیز، حساب کاربری شما:\nنام: {state['full_name']}\nکد ملی: {state['national_id']}\nتلفن: {state['phone']}_",
                     reply_markup=make_inline_keyboard([
                         [{"text": "✅ تأیید نهایی", "callback_data": "final_confirm"}],
                         [{"text": "✏️ تصحیح اطلاعات", "callback_data": "edit_info"}]
@@ -149,23 +150,29 @@ def handle_update(update):
         user_id = str(chat_id)
 
         if data == "start_registration":
-            user_data[user_id] = {}
-            save_data(user_data)
+            user_states[user_id] = {}
             send_message(chat_id, "_لطفاً نام و نام خانوادگی خود را وارد کنید (مثال: علی رضایی)._")
+        
         elif data == "edit_name":
-            user_data[user_id].pop("full_name", None)
-            save_data(user_data)
+            user_states[user_id].pop("full_name", None)
             send_message(chat_id, "_نام جدید را وارد کنید._")
-        elif data == "edit_national_id":
-            user_data[user_id].pop("national_id", None)
-            save_data(user_data)
-            send_message(chat_id, "_کد ملی جدید را وارد کنید._")
+        
         elif data == "edit_info":
-            user_data[user_id] = {}
-            save_data(user_data)
+            user_states[user_id] = {}
             send_message(chat_id, "_بیایید دوباره شروع کنیم. لطفاً نام و نام خانوادگی خود را وارد کنید._")
+        
         elif data == "final_confirm":
-            send_message(chat_id, f"🎉 {user_data[user_id]['first_name']} عزیز، ثبت‌نام شما با موفقیت تکمیل شد! موفق باشید!")
+            user_data[user_id] = user_states[user_id]  # ذخیره اطلاعات در فایل JSON فقط هنگام تأیید نهایی
+            save_data(user_data)
+            send_message(
+                chat_id,
+                f"🎉 {user_states[user_id]['first_name']} عزیز، ثبت‌نام شما با موفقیت تکمیل شد! موفق باشید!",
+                reply_markup=make_inline_keyboard([
+                    [{"text": "✏️ تصحیح اطلاعات", "callback_data": "edit_info"}],
+                    [{"text": "📚 انتخاب کلاس", "callback_data": "choose_class"}]
+                ])
+            )
+            user_states[user_id] = {}  # پاک کردن وضعیت موقت پس از ذخیره
 
 # ♻️ حلقه اصلی
 def main():
