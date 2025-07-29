@@ -22,11 +22,17 @@
       "section": "لحنی",
       "price": "۳۰۰",
       "link": "ب"
+    },
+    {
+      "name": "علی",
+      "section": "تجوید",
+      "price": "۳۰۰",
+      "link": "ب"
     }
   ],
   "temp_class": {
-    "name": "لحن",
-    "section": "لحنی",
+    "name": "علی",
+    "section": "تجوید",
     "price": "۳۰۰",
     "link": "ب"
   }
