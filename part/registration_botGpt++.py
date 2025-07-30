@@ -169,6 +169,7 @@ def handle_update(update):
 
 # ♻️ حلقه اصلی
 def main():
+    print("Bot is running...")
     last_update_id = 0
     while True:
         try:

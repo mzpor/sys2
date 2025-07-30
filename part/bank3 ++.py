@@ -156,8 +156,8 @@ def main():
                     if selected_class:
                         send_message(chat_id, f"💸 پرداخت برای '{selected_class}' با موفقیت انجام شد!", 
                                      reply_markup=build_reply_keyboard(["شروع", "خروج", "کلاس"]))
-                        send_message(chat_id, "🌟 محمد می‌گه: «قدم گذاشتن در مسیر رشد از همین‌جا شروع می‌شه!»", 
-                                     reply_markup=build_reply_keyboard(["شروع", "خروج", "کلاس"]))
+                       # send_message(chat_id, "🌟 محمد می‌گه: «قدم گذاشتن در مسیر رشد از همین‌جا شروع می‌شه!»", 
+                        #reply_markup=build_reply_keyboard(["شروع", "خروج", "کلاس"]))
                         send_message(chat_id, f"📎 لینک ورود به گروه: {GROUP_LINK}", 
                                      reply_markup=build_reply_keyboard(["شروع", "خروج", "کلاس"]))
                         send_message(chat_id, "🎉 از اینکه همراه شدید، بی‌نهایت سپاسگزاریم!", 
@@ -185,9 +185,16 @@ def main():
                     state = user_states.get(user_id, "START")
 
                     if text == "/start" or text == "شروع":
+                
                         user_states[user_id] = "START"
                         send_message(chat_id, "🎓 به ربات خوش اومدی! لطفاً یکی از گزینه‌ها رو انتخاب کن:", 
-                                     reply_markup=build_reply_keyboard(["شروع", "خروج", "کلاس"]))
+                                  
+                                     reply_markup=build_reply_keyboard
+                                     (
+                                        ["شروع", "خروج", "کلاس", "کلاس2"],
+                                     
+                                     ))
+                                 
 
                     elif text == "خروج":
                         user_states[user_id] = "START"
