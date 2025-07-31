@@ -971,5 +971,3 @@ def handle_message(message):
 🕐 زمان: {get_persian_date()} - {datetime.now().strftime("%H:%M")}
 
 لطفاً یکی از گزینه‌های زیر را انتخاب کنید:"""
-                
-                send_message(chat_id, welcome
