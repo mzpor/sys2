@@ -1,0 +1,8 @@
+{
+  "bot_token": "811316021:qhTkuourrvpM4nF1xrE6MyD93rSgJBfVZFwXbJU1",
+  "admin_id": "123456789",
+  "teacher_ids": ["123456789", "987654321"],
+  "data_file": "room_data.json",
+  "attendance_days": ["Thursday"],
+  "welcome_message": "🎉 به ربات مدیریت روم خوش آمدید!\n\nدستورات:\n👥 /عضو - ثبت در گروه\n📋 /لیست - مشاهده لیست اعضا"
+}
