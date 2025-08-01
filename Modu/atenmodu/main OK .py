@@ -1,18 +1,12 @@
 import requests
 import time
 from modules.attendance.attendance import AttendanceModule
-from modules.group_management.group_management import GroupManagementModule
 from config import BASE_URL
 
 class SchoolBot:
     def __init__(self):
-        # مقداردهی اولیه ماژول‌ها
+        # مقداردهی اولیه ماژول حضور و غیاب
         self.attendance = AttendanceModule()
-        self.group_management = GroupManagementModule(self.attendance)
-        # اتصال ماژول‌ها به یکدیگر
-        self.attendance.set_group_management(self.group_management)
-        # اتصال ماژول‌ها به یکدیگر
-        self.attendance.set_group_management(self.group_management)
 
     def get_updates(self, offset=None):
         # دریافت آپدیت‌ها از API بله
@@ -31,17 +25,10 @@ class SchoolBot:
         try:
             if "message" in update:
                 print(f"Processing message update: {update['message']}")
-                if "new_chat_members" in update["message"]:
-                    self.group_management.handle_new_chat_member(update["message"])
-                else:
-                    self.group_management.handle_message(update["message"])
-                    self.attendance.handle_message(update["message"])
+                self.attendance.handle_message(update["message"])
             elif "callback_query" in update:
                 print(f"Processing callback update: {update['callback_query']}")
-                if update["callback_query"]["data"].startswith(("admin_view_", "teacher_view_", "view_attendance_", "quick_attendance_", "group_menu")):
-                    self.group_management.handle_callback(update["callback_query"])
-                else:
-                    self.attendance.handle_callback(update["callback_query"])
+                self.attendance.handle_callback(update["callback_query"])  # ارسال مستقیم callback_query
             else:
                 print(f"Unknown update type: {update}")
         except Exception as e:

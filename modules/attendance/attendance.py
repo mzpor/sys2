@@ -1,15 +1,15 @@
 import requests
 import jdatetime
 from datetime import datetime
-from config import BASE_URL, AUTHORIZED_USER_IDS, ADMIN_USER_ID
 
 class AttendanceModule:
     def __init__(self):
         # مقداردهی اولیه لیست کاربران
         self.users = []  # به‌جای لیست تستی، بعداً از گروه پر می‌شه
-        self.attendance_data = {}
+        self.attendance_data = {}  # دیکشنری برای ذخیره وضعیت حضور و غیاب کاربران
+        self.group_attendance = {}  # دیکشنری برای ذخیره وضعیت حضور و غیاب به تفکیک گروه‌ها
+        self.current_group_id = None  # گروه فعلی که کاربر در حال مشاهده یا ویرایش آن است
         self.user_states = {}
-        self.group_management = None  # ارجاع به ماژول مدیریت گروه
         self.status_icons = {
             "حاضر": "✅",
             "حضور با تاخیر": "⏰",
@@ -17,11 +17,7 @@ class AttendanceModule:
             "غیبت(موجه)": "📄",
             "در انتظار": "⏳"
         }
-        print("AttendanceModule initialized")
-
-    def set_group_management(self, group_management):
-        """تنظیم ارجاع به ماژول مدیریت گروه"""
-        self.group_management = group_management
+        print("AttendanceModule initialized with group-specific attendance tracking")
 
     def send_message(self, chat_id, text, reply_markup=None):
         # ارسال پیام به کاربر
@@ -61,6 +57,12 @@ class AttendanceModule:
 
     def is_user_authorized(self, user_id):
         # بررسی مجوز کاربر
+        if isinstance(user_id, str):
+            try:
+                user_id = int(user_id)
+            except ValueError:
+                return False
+        from main import AUTHORIZED_USER_IDS, ADMIN_USER_ID
         authorized = user_id in AUTHORIZED_USER_IDS or user_id == ADMIN_USER_ID
         print(f"Checking user access {user_id}: {authorized}")
         return authorized
@@ -72,30 +74,66 @@ class AttendanceModule:
         months = {1: "فروردین", 2: "اردیبهشت", 3: "خرداد", 4: "تیر", 5: "مرداد", 6: "شهریور", 7: "مهر", 8: "آبان", 9: "آذر", 10: "دی", 11: "بهمن", 12: "اسفند"}
         return f"{weekdays[now.weekday()]} {now.day} {months[now.month]}"
 
-    def get_attendance_list(self):
+    def get_attendance_list(self, group_id=None):
         # نمایش لیست حضور و غیاب
         if not self.users:
             print("Error: User list is empty!")
             return "❌ لیست کاربران خالی است!"
+        
+        # دریافت تاریخ و زمان فعلی
         current_time = f"{self.get_persian_date()} - {datetime.now().strftime('%H:%M')}"
-        text = f"📊 **لیست حضور و غیاب**\n🕐 آخرین بروزرسانی: {current_time}\n\n"
-        for i, user_id in enumerate(self.users, 1):
-            status = self.attendance_data.get(user_id, "در انتظار")
-            icon = self.status_icons.get(status, "⏳")
-            # استفاده از نام کاربر اگر ماژول مدیریت گروه در دسترس باشد
-            if self.group_management:
-                user_name = self.group_management.get_user_name(user_id)
-            else:
-                user_name = f"کاربر {user_id}"
-            text += f"{i:2d}. {icon} {user_name} - {status}\n"
-        present = sum(1 for status in self.attendance_data.values() if status == "حاضر")
-        late = sum(1 for status in self.attendance_data.values() if status == "حضور با تاخیر")
-        absent = sum(1 for status in self.attendance_data.values() if status == "غایب")
-        justified = sum(1 for status in self.attendance_data.values() if status == "غیبت(موجه)")
+        
+        # تنظیم متن گروه
+        group_text = f" گروه {group_id}" if group_id else ""
+        
+        # ساخت عنوان لیست
+        text = f"📊 **لیست حضور و غیاب{group_text}**\n🕐 آخرین بروزرسانی: {current_time}\n\n"
+        
+        # استفاده از دیکشنری مخصوص گروه اگر گروه مشخص شده باشد
+        if group_id:
+            # اگر این گروه قبلاً در دیکشنری نباشد، آن را اضافه می‌کنیم
+            if group_id not in self.group_attendance:
+                self.group_attendance[group_id] = {}
+            
+            # نمایش وضعیت حضور و غیاب کاربران در این گروه
+            for i, user in enumerate(self.users, 1):
+                # دریافت وضعیت کاربر در این گروه
+                status = self.group_attendance[group_id].get(user, "در انتظار")
+                icon = self.status_icons.get(status, "⏳")
+                
+                # دریافت اطلاعات کاربر (نام و نام خانوادگی)
+                user_name = user  # مقدار پیش‌فرض
+                # اینجا می‌توان کد دریافت نام کاربر را اضافه کرد
+                
+                text += f"{i:2d}. {icon} {user_name} - {status}\n"
+            
+            # محاسبه آمار حضور و غیاب برای این گروه
+            user_statuses = [self.group_attendance[group_id].get(user, "در انتظار") for user in self.users]
+        else:
+            # نمایش وضعیت حضور و غیاب کلی کاربران
+            for i, user in enumerate(self.users, 1):
+                status = self.attendance_data.get(user, "در انتظار")
+                icon = self.status_icons.get(status, "⏳")
+                text += f"{i:2d}. {icon} {user} - {status}\n"
+            
+            # محاسبه آمار حضور و غیاب کلی
+            user_statuses = [self.attendance_data.get(user, "در انتظار") for user in self.users]
+        
+        # محاسبه آمار بر اساس وضعیت‌های کاربران
+        present = sum(1 for status in user_statuses if status == "حاضر")
+        late = sum(1 for status in user_statuses if status == "حضور با تاخیر")
+        absent = sum(1 for status in user_statuses if status == "غایب")
+        justified = sum(1 for status in user_statuses if status == "غیبت(موجه)")
+        waiting = sum(1 for status in user_statuses if status == "در انتظار")
+        
+        # اضافه کردن آمار به متن
         text += f"\n📈 **آمار:**\n"
         text += f"✅ حاضر: {present} | ⏰ تاخیر: {late}\n"
-        text += f"❌ غایب: {absent} | 📄 موجه: {justified}"
-        print(f"Attendance list: {text}")
+        text += f"❌ غایب: {absent} | 📄 موجه: {justified}\n"
+        text += f"⏳ در انتظار: {waiting} | 👥 کل: {len(self.users)}"
+        
+        # ثبت در لاگ
+        print(f"Attendance list for group {group_id}: {len(self.users)} users")
         return text
 
     def get_main_menu(self, user_id):
@@ -118,15 +156,10 @@ class AttendanceModule:
             print("Error: User list is empty for keyboard!")
             return {"inline_keyboard": [[{"text": "❌ لیست کاربران خالی است", "callback_data": "main_menu"}]]}
         keyboard = []
-        for i, user_id in enumerate(self.users):
-            status = self.attendance_data.get(user_id, "در انتظار")
+        for i, user in enumerate(self.users):
+            status = self.attendance_data.get(user, "در انتظار")
             icon = self.status_icons.get(status, "⏳")
-            # استفاده از نام کاربر اگر ماژول مدیریت گروه در دسترس باشد
-            if self.group_management:
-                user_name = self.group_management.get_user_name(user_id)
-            else:
-                user_name = f"کاربر {user_id}"
-            keyboard.append([{"text": f"{icon} {user_name}", "callback_data": f"select_user_{i}"}])
+            keyboard.append([{"text": f"{icon} {user}", "callback_data": f"select_user_{i}"}])
         keyboard.extend([
             [{"text": "✅ همه حاضر", "callback_data": "all_present"}, {"text": "❌ همه غایب", "callback_data": "all_absent"}],
             [{"text": "🏠 برگشت به منو", "callback_data": "main_menu"}]
@@ -136,12 +169,7 @@ class AttendanceModule:
 
     def get_status_keyboard(self, user_index):
         # کیبورد انتخاب وضعیت
-        user_id = self.users[user_index]
-        # استفاده از نام کاربر اگر ماژول مدیریت گروه در دسترس باشد
-        if self.group_management:
-            user_name = self.group_management.get_user_name(user_id)
-        else:
-            user_name = f"کاربر {user_id}"
+        user = self.users[user_index]
         return {
             "inline_keyboard": [
                 [{"text": "✅ حاضر", "callback_data": f"set_status_{user_index}_حاضر"}, {"text": "⏰ حضور با تاخیر", "callback_data": f"set_status_{user_index}_حضور با تاخیر"}],
@@ -160,10 +188,11 @@ class AttendanceModule:
         if not self.is_user_authorized(user_id) and text != "/group":
             print(f"🤖 id❌ {chat_id}.")
             self.send_message(chat_id, "❌ شما اجازه دسترسی به این بات را ندارید!")
-            return
+            return True
 
         if text in ["/start", "شروع"]:
             print(f"🤖 start id✅ {chat_id}.")
+            from main import ADMIN_USER_ID
             welcome_text = f"""🎯 **بات حضور و غیاب**
 
 سلام {'مدیر' if user_id == ADMIN_USER_ID else 'مربی'} عزیز! 👋
@@ -175,6 +204,7 @@ class AttendanceModule:
 لطفاً یکی از گزینه‌های زیر را انتخاب کنید:"""
             keyboard = {"keyboard": [[{"text": "شروع"}, {"text": "خروج"}, {"text": "منوی اصلی"}]], "resize_keyboard": True}
             self.send_message(chat_id, welcome_text, keyboard)
+            return True
         elif text == "منوی اصلی":
             welcome_text = f"""🏠 **منوی اصلی**
 
@@ -183,10 +213,14 @@ class AttendanceModule:
 
 لطفاً یکی از گزینه‌های زیر را انتخاب کنید:"""
             self.send_message(chat_id, welcome_text, self.get_main_menu(user_id))
+            return True
         elif text == "خروج":
             self.send_message(chat_id, "👋 با تشکر از استفاده شما از بات حضور و غیاب. موفق باشید! 🌟")
+            return True
         elif text == "/group":
             self.send_message(chat_id, "📋 **مدیریت گروه‌ها**\nلطفاً گروه یا مربی را انتخاب کنید:", {"inline_keyboard": [[{"text": "👥 گروه‌ها", "callback_data": "group_menu"}]]})
+            return True
+        return False
 
     def handle_callback(self, callback):
         # پردازش درخواست‌های callback
@@ -199,12 +233,34 @@ class AttendanceModule:
 
         if not self.is_user_authorized(user_id):
             self.answer_callback_query(callback_query_id, "❌ شما اجازه دسترسی ندارید!")
-            return
+            return False
 
         if data == "main_menu":
-            self.edit_message(chat_id, message_id, "🏠 **منوی اصلی**\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:", self.get_main_menu(user_id))
-            self.answer_callback_query(callback_query_id)
+            # پاک کردن گروه فعلی
+            self.current_group_id = None
+            
+            # بررسی نقش کاربر
+            from main import ADMIN_USER_ID
+            is_admin = user_id == ADMIN_USER_ID
+            is_teacher = self.is_user_authorized(user_id) and not is_admin
+            
+            # پیام خوش‌آمدگویی شخصی‌سازی شده
+            if is_admin:
+                welcome_text = f"سلام مدیر\n{self.get_persian_date()}\nبه سیستم مدیریت حضور و غیاب خوش آمدید!"
+            elif is_teacher:
+                welcome_text = f"سلام مربی\n{self.get_persian_date()}\nبه سیستم مدیریت حضور و غیاب خوش آمدید!"
+            else:
+                welcome_text = f"سلام\n{self.get_persian_date()}\nبه سیستم مدیریت حضور و غیاب خوش آمدید!"
+            
+            # نمایش کیبورد مناسب بر اساس نقش کاربر
+            keyboard = self.get_main_menu(user_id)
+            self.edit_message(chat_id, message_id, welcome_text, keyboard)
+            self.answer_callback_query(callback_query_id, "به منوی اصلی بازگشتید")
+            return True
         elif data == "view_attendance":
+            # پاک کردن گروه فعلی چون این حالت برای مشاهده کلی است
+            self.current_group_id = None
+            
             text = self.get_attendance_list()
             keyboard = {"inline_keyboard": [
                 [{"text": "🔄 بروزرسانی", "callback_data": "view_attendance"}],
@@ -213,55 +269,71 @@ class AttendanceModule:
             ]}
             self.edit_message(chat_id, message_id, text, keyboard)
             self.answer_callback_query(callback_query_id, "✅ لیست بروزرسانی شد")
+            return True
         elif data == "quick_attendance":
-            self.edit_message(chat_id, message_id, "✏️ **ثبت سریع حضور و غیاب**\nروی نام هر کاربر کلیک کنید:", self.get_quick_attendance_keyboard())
+            # پاک کردن گروه فعلی چون این حالت برای ثبت کلی است
+            self.current_group_id = None
+            
+            # دریافت تاریخ شمسی
+            persian_date = self.get_persian_date()
+            
+            self.edit_message(chat_id, message_id, f"✏️ **ثبت سریع حضور و غیاب**\n{persian_date}\nروی نام هر قرآن‌آموز کلیک کنید:", self.get_quick_attendance_keyboard())
             self.answer_callback_query(callback_query_id)
+            return True
         elif data.startswith("select_user_"):
             user_index = int(data.split("_")[-1])
-            user_id = self.users[user_index]
-            current_status = self.attendance_data.get(user_id, "در انتظار")
-            # استفاده از نام کاربر اگر ماژول مدیریت گروه در دسترس باشد
-            if self.group_management:
-                user_name = self.group_management.get_user_name(user_id)
-            else:
-                user_name = f"کاربر {user_id}"
-            self.edit_message(chat_id, message_id, f"👤 **{user_name}**\nوضعیت فعلی: {current_status}\n\nوضعیت جدید را انتخاب کنید:", self.get_status_keyboard(user_index))
-            self.answer_callback_query(callback_query_id, f"انتخاب {user_name}")
+            user = self.users[user_index]
+            current_status = self.attendance_data.get(user, "در انتظار")
+            self.edit_message(chat_id, message_id, f"👤 **{user}**\nوضعیت فعلی: {current_status}\n\nوضعیت جدید را انتخاب کنید:", self.get_status_keyboard(user_index))
+            self.answer_callback_query(callback_query_id, f"انتخاب {user}")
+            return True
         elif data.startswith("set_status_"):
             parts = data.split("_")
             user_index = int(parts[2])
             status = parts[3]
-            user_id = self.users[user_index]
-            self.attendance_data[user_id] = status
+            user = self.users[user_index]
+            
+            # ذخیره وضعیت در دیکشنری کلی
+            self.attendance_data[user] = status
+            
+            # اگر گروه فعلی مشخص شده باشد، وضعیت را در دیکشنری مخصوص آن گروه هم ذخیره می‌کنیم
+            if self.current_group_id:
+                # اطمینان از وجود کلید گروه در دیکشنری
+                if self.current_group_id not in self.group_attendance:
+                    self.group_attendance[self.current_group_id] = {}
+                
+                # ذخیره وضعیت کاربر در گروه فعلی
+                self.group_attendance[self.current_group_id][user] = status
+                print(f"Set status for user {user} in group {self.current_group_id} to {status}")
             self.edit_message(chat_id, message_id, "✏️ **ثبت سریع حضور و غیاب**\nروی نام هر کاربر کلیک کنید:", self.get_quick_attendance_keyboard())
-            # استفاده از نام کاربر برای پیام تأیید
-            if self.group_management:
-                user_name = self.group_management.get_user_name(user_id)
-            else:
-                user_name = f"کاربر {user_id}"
-            self.answer_callback_query(callback_query_id, f"✅ {user_name} - {status}")
+            self.answer_callback_query(callback_query_id, f"✅ {user} - {status}")
+            return True
         elif data == "all_present":
             for user in self.users:
                 self.attendance_data[user] = "حاضر"
             self.edit_message(chat_id, message_id, "✅ **همه کاربران حاضر علامت گذاری شدند**", {"inline_keyboard": [[{"text": "📊 مشاهده لیست", "callback_data": "view_attendance"}], [{"text": "🏠 منوی اصلی", "callback_data": "main_menu"}]]})
             self.answer_callback_query(callback_query_id, "✅ همه حاضر شدند")
+            return True
         elif data == "all_absent":
             for user in self.users:
                 self.attendance_data[user] = "غایب"
             self.edit_message(chat_id, message_id, "❌ **همه کاربران غایب علامت گذاری شدند**", {"inline_keyboard": [[{"text": "📊 مشاهده لیست", "callback_data": "view_attendance"}], [{"text": "🏠 منوی اصلی", "callback_data": "main_menu"}]]})
             self.answer_callback_query(callback_query_id, "❌ همه غایب شدند")
+            return True
         elif data == "clear_all":
             self.attendance_data.clear()
             self.edit_message(chat_id, message_id, "🗑️ **همه داده‌ها پاک شدند**", {"inline_keyboard": [[{"text": "🏠 منوی اصلی", "callback_data": "main_menu"}]]})
             self.answer_callback_query(callback_query_id, "🗑️ داده‌ها پاک شدند")
+            return True
         elif data == "statistics":
             total = len(self.users)
-            present = sum(1 for status in self.attendance_data.values() if status == "حاضر")
-            late = sum(1 for status in self.attendance_data.values() if status == "حضور با تاخیر")
-            absent = sum(1 for status in self.attendance_data.values() if status == "غایب")
-            justified = sum(1 for status in self.attendance_data.values() if status == "غیبت(موجه)")
-            pending = total - len(self.attendance_data)
-            stats_text = f"""📈 **آمار کلی حضور و غیاب**
+            if total > 0:
+                present = sum(1 for status in self.attendance_data.values() if status == "حاضر")
+                late = sum(1 for status in self.attendance_data.values() if status == "حضور با تاخیر")
+                absent = sum(1 for status in self.attendance_data.values() if status == "غایب")
+                justified = sum(1 for status in self.attendance_data.values() if status == "غیبت(موجه)")
+                pending = total - len(self.attendance_data)
+                stats_text = f"""📈 **آمار کلی حضور و غیاب**
 
 👥 کل کاربران: {total}
 ✅ حاضر: {present} ({present/total*100:.1f}%)
@@ -271,5 +343,9 @@ class AttendanceModule:
 ⏳ در انتظار: {pending} ({pending/total*100:.1f}%)
 
 🕐 زمان آخرین بروزرسانی: {self.get_persian_date()} - {datetime.now().strftime("%H:%M")}"""
+            else:
+                stats_text = "❌ لیست کاربران خالی است!"
             self.edit_message(chat_id, message_id, stats_text, {"inline_keyboard": [[{"text": "🔄 بروزرسانی آمار", "callback_data": "statistics"}], [{"text": "🏠 بازگشت به منو", "callback_data": "main_menu"}]]})
             self.answer_callback_query(callback_query_id, "📊 آمار بروزرسانی شد")
+            return True
+        return False

@@ -9,10 +9,6 @@ class SchoolBot:
         # مقداردهی اولیه ماژول‌ها
         self.attendance = AttendanceModule()
         self.group_management = GroupManagementModule(self.attendance)
-        # اتصال ماژول‌ها به یکدیگر
-        self.attendance.set_group_management(self.group_management)
-        # اتصال ماژول‌ها به یکدیگر
-        self.attendance.set_group_management(self.group_management)
 
     def get_updates(self, offset=None):
         # دریافت آپدیت‌ها از API بله
@@ -38,7 +34,7 @@ class SchoolBot:
                     self.attendance.handle_message(update["message"])
             elif "callback_query" in update:
                 print(f"Processing callback update: {update['callback_query']}")
-                if update["callback_query"]["data"].startswith(("admin_view_", "teacher_view_", "view_attendance_", "quick_attendance_", "group_menu")):
+                if update["callback_query"]["data"].startswith(("admin_view_", "teacher_view_", "view_attendance_", "quick_attendance_")):
                     self.group_management.handle_callback(update["callback_query"])
                 else:
                     self.attendance.handle_callback(update["callback_query"])

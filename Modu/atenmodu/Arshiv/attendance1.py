@@ -2,13 +2,12 @@ import requests
 import jdatetime
 from datetime import datetime
 from config import BASE_URL, AUTHORIZED_USER_IDS
-#  گروه اضافه شد . بعدی 
+
 class AttendanceModule:
     def __init__(self):
-        # لیست کاربران ثابت (برای تست)
-        self.users = [f"کاربر{i+1}" for i in range(10)]  # کاربر1 تا کاربر10
-        self.attendance_data = {}  # داده‌های حضور و غیاب
-        self.user_states = {}  # وضعیت کاربران
+        self.users = [f"کاربر{i+1}" for i in range(10)]
+        self.attendance_data = {}
+        self.user_states = {}
         self.status_icons = {
             "حاضر": "✅",
             "حضور با تاخیر": "⏰",
@@ -16,62 +15,36 @@ class AttendanceModule:
             "غیبت(موجه)": "📄",
             "در انتظار": "⏳"
         }
-        print(f"لیست کاربران در __init__: {self.users}")  # لاگ برای دیباگ
 
     def send_message(self, chat_id, text, reply_markup=None):
-        """ارسال پیام به کاربر"""
         url = f"{BASE_URL}/sendMessage"
-        payload = {"chat_id": chat_id, "text": text, "reply_markup": reply_markup, "parse_mode": "Markdown"}
-        try:
-            response = requests.post(url, json=payload)
-            print(f"send_message: {response.status_code}, {response.json()}")  # لاگ
-            return response.status_code == 200
-        except Exception as e:
-            print(f"خطا در send_message: {e}")
-            return False
+        payload = {"chat_id": chat_id, "text": text, "reply_markup": reply_markup}
+        response = requests.post(url, json=payload)
+        return response.status_code == 200
 
     def edit_message(self, chat_id, message_id, text, reply_markup=None):
-        """ویرایش پیام موجود"""
         url = f"{BASE_URL}/editMessageText"
-        payload = {"chat_id": chat_id, "message_id": message_id, "text": text, "reply_markup": reply_markup, "parse_mode": "Markdown"}
-        try:
-            response = requests.post(url, json=payload)
-            print(f"edit_message: {response.status_code}, {response.json()}")  # لاگ
-            return response.status_code == 200
-        except Exception as e:
-            print(f"خطا در edit_message: {e}")
-            return False
+        payload = {"chat_id": chat_id, "message_id": message_id, "text": text, "reply_markup": reply_markup}
+        response = requests.post(url, json=payload)
+        return response.status_code == 200
 
     def answer_callback_query(self, callback_query_id, text=None):
-        """پاسخ به callback"""
         url = f"{BASE_URL}/answerCallbackQuery"
         payload = {"callback_query_id": callback_query_id}
         if text:
             payload["text"] = text
-        try:
-            response = requests.post(url, json=payload)
-            print(f"answer_callback_query: {response.status_code}, {response.json()}")  # لاگ
-        except Exception as e:
-            print(f"خطا در answer_callback_query: {e}")
+        requests.post(url, json=payload)
 
     def is_user_authorized(self, user_id):
-        """بررسی مجوز کاربر"""
-        authorized = user_id in AUTHORIZED_USER_IDS
-        print(f"چک کردن دسترسی کاربر {user_id}: {authorized}")  # لاگ
-        return authorized
+        return user_id in AUTHORIZED_USER_IDS
 
     def get_persian_date(self):
-        """تبدیل تاریخ به فارسی"""
         now = jdatetime.datetime.now()
         weekdays = {0: "شنبه", 1: "یکشنبه", 2: "دوشنبه", 3: "سه‌شنبه", 4: "چهارشنبه", 5: "پنج‌شنبه", 6: "جمعه"}
         months = {1: "فروردین", 2: "اردیبهشت", 3: "خرداد", 4: "تیر", 5: "مرداد", 6: "شهریور", 7: "مهر", 8: "آبان", 9: "آذر", 10: "دی", 11: "بهمن", 12: "اسفند"}
         return f"{weekdays[now.weekday()]} {now.day} {months[now.month]}"
 
     def get_attendance_list(self):
-        """نمایش لیست حضور و غیاب"""
-        if not self.users:
-            print("خطا: لیست کاربران خالی است!")  # لاگ
-            return "❌ لیست کاربران خالی است!"
         current_time = f"{self.get_persian_date()} - {datetime.now().strftime('%H:%M')}"
         text = f"📊 **لیست حضور و غیاب**\n🕐 آخرین بروزرسانی: {current_time}\n\n"
         for i, user in enumerate(self.users, 1):
@@ -85,11 +58,9 @@ class AttendanceModule:
         text += f"\n📈 **آمار:**\n"
         text += f"✅ حاضر: {present} | ⏰ تاخیر: {late}\n"
         text += f"❌ غایب: {absent} | 📄 موجه: {justified}"
-        print(f"لیست حضور و غیاب: {text}")  # لاگ
         return text
 
     def get_main_menu(self):
-        """منوی اصلی"""
         return {
             "inline_keyboard": [
                 [{"text": "📊 مشاهده لیست حضور و غیاب", "callback_data": "view_attendance"}],
@@ -100,10 +71,6 @@ class AttendanceModule:
         }
 
     def get_quick_attendance_keyboard(self):
-        """کیبورد ثبت سریع حضور و غیاب"""
-        if not self.users:
-            print("خطا: لیست کاربران برای کیبورد خالی است!")  # لاگ
-            return {"inline_keyboard": [[{"text": "❌ لیست کاربران خالی است", "callback_data": "main_menu"}]]}
         keyboard = []
         for i, user in enumerate(self.users):
             status = self.attendance_data.get(user, "در انتظار")
@@ -113,11 +80,9 @@ class AttendanceModule:
             [{"text": "✅ همه حاضر", "callback_data": "all_present"}, {"text": "❌ همه غایب", "callback_data": "all_absent"}],
             [{"text": "🏠 برگشت به منو", "callback_data": "main_menu"}]
         ])
-        print(f"کیبورد ثبت سریع: {keyboard}")  # لاگ
         return {"inline_keyboard": keyboard}
 
     def get_status_keyboard(self, user_index):
-        """کیبورد انتخاب وضعیت"""
         user = self.users[user_index]
         return {
             "inline_keyboard": [
@@ -128,11 +93,9 @@ class AttendanceModule:
         }
 
     def handle_message(self, message):
-        """پردازش پیام‌های متنی"""
         chat_id = message["chat"]["id"]
         user_id = message["from"]["id"]
         text = message.get("text", "")
-        print(f"پیام دریافتی: user_id={user_id}, text={text}")  # لاگ
 
         if not self.is_user_authorized(user_id):
             print(f"🤖 id❌ {chat_id}.")
@@ -140,7 +103,7 @@ class AttendanceModule:
             return
 
         if text in ["/start", "شروع"]:
-            print(f"🤖 start id✅ {chat_id}.")
+            print(f"🤖 شروع id✅ {chat_id}.")
             welcome_text = f"""🎯 **بات حضور و غیاب**
 
 سلام مربی عزیز! 👋
@@ -164,13 +127,11 @@ class AttendanceModule:
             self.send_message(chat_id, "👋 با تشکر از استفاده شما از بات حضور و غیاب. موفق باشید! 🌟")
 
     def handle_callback(self, callback):
-        """پردازش درخواست‌های callback"""
         chat_id = callback["message"]["chat"]["id"]
         message_id = callback["message"]["message_id"]
         user_id = callback["from"]["id"]
         data = callback["data"]
         callback_query_id = callback["id"]
-        print(f"Callback دریافتی: user_id={user_id}, data={data}")  # لاگ
 
         if not self.is_user_authorized(user_id):
             self.answer_callback_query(callback_query_id, "❌ شما اجازه دسترسی ندارید!")

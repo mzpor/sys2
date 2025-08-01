@@ -2,17 +2,15 @@ import requests
 import time
 from modules.attendance.attendance import AttendanceModule
 from modules.group_management.group_management import GroupManagementModule
-from config import BASE_URL
+from modules.teacher_management.teacher_management import TeacherManagementModule
+from config import BASE_URL, ADMIN_USER_ID, AUTHORIZED_USER_IDS
 
 class SchoolBot:
     def __init__(self):
         # مقداردهی اولیه ماژول‌ها
         self.attendance = AttendanceModule()
         self.group_management = GroupManagementModule(self.attendance)
-        # اتصال ماژول‌ها به یکدیگر
-        self.attendance.set_group_management(self.group_management)
-        # اتصال ماژول‌ها به یکدیگر
-        self.attendance.set_group_management(self.group_management)
+        self.teacher_management = TeacherManagementModule(self, ADMIN_USER_ID, AUTHORIZED_USER_IDS)
 
     def get_updates(self, offset=None):
         # دریافت آپدیت‌ها از API بله
@@ -36,10 +34,15 @@ class SchoolBot:
                 else:
                     self.group_management.handle_message(update["message"])
                     self.attendance.handle_message(update["message"])
+                    self.teacher_management.handle_message(update["message"])
             elif "callback_query" in update:
                 print(f"Processing callback update: {update['callback_query']}")
-                if update["callback_query"]["data"].startswith(("admin_view_", "teacher_view_", "view_attendance_", "quick_attendance_", "group_menu")):
+                # بررسی نوع callback برای ارسال به ماژول مناسب
+                callback_data = update["callback_query"]["data"]
+                if callback_data.startswith(("admin_view_", "teacher_view_", "view_members_", "view_attendance_", "quick_attendance_", "group_menu")):
                     self.group_management.handle_callback(update["callback_query"])
+                elif callback_data.startswith(("teachers_menu", "teachers_page_", "view_teacher_", "edit_teacher_", "delete_teacher_", "confirm_delete_teacher_", "add_teacher", "view_teacher_groups_")):
+                    self.teacher_management.handle_callback(update["callback_query"])
                 else:
                     self.attendance.handle_callback(update["callback_query"])
             else:
