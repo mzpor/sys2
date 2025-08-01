@@ -29,10 +29,11 @@ except Exception as e:
     HELPER_COACH_USER_IDS = [2045777722]
 
 class RegistrationModule:
-    def __init__(self):
+    def __init__(self, kargah_module=None):
         self.data_file = "registration_data.json"
         self.user_data = self.load_data()
         self.user_states = {}  # وضعیت کاربران برای ثبت‌نام
+        self.kargah_module = kargah_module  # ارجاع به ماژول کارگاه
         logger.info("RegistrationModule initialized successfully")
 
     def load_data(self) -> Dict:
@@ -111,6 +112,32 @@ class RegistrationModule:
         """بررسی اینکه آیا کاربر ثبت‌نام کرده است"""
         return user_id in self.user_data and "full_name" in self.user_data[user_id]
 
+    def is_registration_complete(self, user_id: str) -> bool:
+        """بررسی اینکه آیا ثبت‌نام کاربر کامل است"""
+        if user_id not in self.user_data:
+            return False
+        
+        user_info = self.user_data[user_id]
+        required_fields = ["full_name", "national_id", "phone"]
+        return all(field in user_info and user_info[field] for field in required_fields)
+
+    def get_missing_fields(self, user_id: str) -> List[str]:
+        """دریافت فیلدهای ناقص ثبت‌نام"""
+        if user_id not in self.user_data:
+            return ["نام", "کد ملی", "تلفن"]
+        
+        user_info = self.user_data[user_id]
+        missing = []
+        
+        if "full_name" not in user_info or not user_info["full_name"]:
+            missing.append("نام")
+        if "national_id" not in user_info or not user_info["national_id"]:
+            missing.append("کد ملی")
+        if "phone" not in user_info or not user_info["phone"]:
+            missing.append("تلفن")
+        
+        return missing
+
     def is_admin_or_teacher(self, user_id: int) -> bool:
         """بررسی اینکه آیا کاربر مدیر یا مربی است"""
         return (user_id in ADMIN_USER_IDS or 
@@ -139,7 +166,7 @@ class RegistrationModule:
         text = message.get("text", "")
         contact = message.get("contact")
         
-        logger.info(f"Processing message from user {user_id}: {text}")
+        logger.info(f"Processing message from user {user_id}: text='{text}', contact={contact}")
         
         # بررسی مدیر یا مربی بودن
         if self.is_admin_or_teacher(user_id):
@@ -159,8 +186,35 @@ class RegistrationModule:
             self._handle_back_command(chat_id, user_id_str)
         elif text == "پنل قرآن‌آموز":
             self._handle_quran_student_panel(chat_id, user_id_str)
+        elif text == "📚 انتخاب کلاس":
+            # هدایت به انتخاب کلاس
+            if self.kargah_module:
+                self.kargah_module.show_workshops_for_student(chat_id, user_id)
+            else:
+                self.send_message(chat_id, "❌ خطا در دسترسی به ماژول کارگاه")
+        elif text == "شروع":
+            # برای کاربران ثبت‌نام شده، پنل قرآن‌آموز نمایش بده
+            if self.is_user_registered(user_id_str):
+                self._handle_quran_student_panel(chat_id, user_id_str)
+            else:
+                # برای کاربران غیر ثبت‌نام، منوی اصلی
+                self._handle_start_command(chat_id, user_id_str)
+        elif contact and user_id_str in self.user_states:
+            # پردازش contact برای کاربران در حال ثبت‌نام
+            logger.info(f"User {user_id_str} has contact, processing registration step")
+            self._handle_registration_step(chat_id, user_id_str, "", contact)
         elif user_id_str in self.user_states:
+            # پردازش مراحل ثبت‌نام
+            logger.info(f"User {user_id_str} in registration state, processing step")
             self._handle_registration_step(chat_id, user_id_str, text, contact)
+        else:
+            # برای سایر پیام‌ها، بررسی کنیم که آیا کاربر ثبت‌نام کرده است
+            if self.is_user_registered(user_id_str):
+                # کاربر ثبت‌نام کرده - پنل قرآن‌آموز
+                self._handle_quran_student_panel(chat_id, user_id_str)
+            else:
+                # کاربر ثبت‌نام نکرده - منوی اصلی
+                self._handle_start_command(chat_id, user_id_str)
 
     def handle_callback(self, callback: Dict):
         """پردازش callback query ها"""
@@ -179,31 +233,59 @@ class RegistrationModule:
             self._handle_edit_name(chat_id, user_id_str)
         elif data == "edit_national_id":
             self._handle_edit_national_id(chat_id, user_id_str)
+        elif data == "edit_phone":
+            self._handle_edit_phone(chat_id, user_id_str)
         elif data == "edit_info":
             self._handle_edit_info(chat_id, user_id_str)
         elif data == "final_confirm":
             self._handle_final_confirm(chat_id, user_id_str)
         elif data == "quran_student_panel":
             self._handle_quran_student_panel(chat_id, user_id_str)
+        elif data == "complete_registration":
+            self._handle_complete_registration(chat_id, user_id_str)
 
     def _handle_start_command(self, chat_id: int, user_id: str):
         """پردازش دستور شروع"""
         if self.is_user_registered(user_id):
             # کاربر ثبت‌نام کرده
             user_info = self.user_data[user_id]
-            first_name = user_info["first_name"]
+            first_name = user_info.get("first_name", "کاربر")
             full_name = user_info["full_name"]
             national_id = user_info.get("national_id", "هنوز مانده")
             phone = user_info.get("phone", "هنوز مانده")
             
-            welcome_text = f"_🌟 {first_name} عزیز، خوش آمدی!\nحساب کاربری شما آماده است 👇_\n*نام*: {full_name}\n*کد ملی*: {national_id}\n*تلفن*: {phone}"
-            
-            self.send_message(chat_id, welcome_text,
-                reply_markup=self.build_inline_keyboard([
-                    [{"text": "✏️ تصحیح اطلاعات", "callback_data": "edit_info"}],
-                    [{"text": "📚 پنل قرآن‌آموز", "callback_data": "quran_student_panel"}]
-                ])
-            )
+            # بررسی کامل بودن ثبت‌نام
+            if self.is_registration_complete(user_id):
+                # ثبت‌نام کامل
+                welcome_text = f"_🌟 {first_name} عزیز، خوش آمدی!\nحساب کاربری شما آماده است 👇_\n*نام*: {full_name}\n*کد ملی*: {national_id}\n*تلفن*: {phone}"
+                
+                self.send_message(chat_id, welcome_text,
+                    reply_markup=self.build_reply_keyboard([
+                        ["📚 پنل قرآن‌آموز", "شروع مجدد"],
+                        ["خروج"]
+                    ])
+                )
+            else:
+                # ثبت‌نام ناقص
+                missing_fields = self.get_missing_fields(user_id)
+                missing_text = "، ".join(missing_fields)
+                
+                welcome_text = f"_⚠️ {first_name} عزیز، ثبت‌نام شما ناقص است!\n\n📋 اطلاعات فعلی:\n*نام*: {full_name}\n*کد ملی*: {national_id}\n*تلفن*: {phone}\n\n❌ فیلدهای ناقص: {missing_text}_"
+                
+                self.send_message(chat_id, welcome_text,
+                    reply_markup=self.build_inline_keyboard([
+                        [{"text": "✏️ تصحیح نام", "callback_data": "edit_name"}],
+                        [{"text": "🆔 تصحیح کد ملی", "callback_data": "edit_national_id"}],
+                        [{"text": "📱 تصحیح تلفن", "callback_data": "edit_phone"}]
+                    ])
+                )
+                
+                # اضافه کردن دکمه شروع مجدد
+                self.send_message(chat_id, "_برای شروع مجدد روی دکمه زیر کلیک کنید:_",
+                    reply_markup=self.build_reply_keyboard([
+                        ["شروع مجدد", "خروج"]
+                    ])
+                )
         else:
             # کاربر ثبت‌نام نکرده - نمایش گزینه ثبت‌نام
             welcome_text = "_🌟 خوش آمدید! به مدرسه تلاوت خوش آمدید!_"
@@ -255,10 +337,13 @@ class RegistrationModule:
     def _handle_registration_step(self, chat_id: int, user_id: str, text: str, contact: Optional[Dict] = None):
         """پردازش مراحل ثبت‌نام"""
         if user_id not in self.user_states:
+            logger.warning(f"User {user_id} not in user_states")
             return
         
         state = self.user_states[user_id]
         step = state.get("step")
+        
+        logger.info(f"Processing registration step for user {user_id}: step={step}, text='{text}', contact={contact}")
         
         if step == "name":
             # مرحله نام
@@ -299,7 +384,7 @@ class RegistrationModule:
                     ])
                 )
                 
-                self.send_message(chat_id, "👇👇👇",
+                self.send_message(chat_id, "📱 لطفاً شماره تلفن خود را با دکمه زیر ارسال کنید.",
                     reply_markup={
                         "keyboard": [[{"text": "📱 ارسال شماره تلفن", "request_contact": True}]],
                         "resize_keyboard": True
@@ -312,9 +397,12 @@ class RegistrationModule:
                 
         elif step == "phone" and contact:
             # مرحله شماره تلفن
+            logger.info(f"Processing phone step for user {user_id} with contact: {contact}")
             phone_number = contact["phone_number"]
             self.user_data[user_id]["phone"] = phone_number
             self.save_data(self.user_data)
+            
+            logger.info(f"Phone number saved for user {user_id}: {phone_number}")
             
             first_name = self.user_data[user_id]["first_name"]
             full_name = self.user_data[user_id]["full_name"]
@@ -325,13 +413,34 @@ class RegistrationModule:
             self.send_message(chat_id, status_text,
                 reply_markup=self.build_inline_keyboard([
                     [{"text": "✅ تأیید نهایی", "callback_data": "final_confirm"}],
-                    [{"text": "✏️ تصحیح اطلاعات", "callback_data": "edit_info"}]
+                    [{"text": "✏️ تصحیح نام", "callback_data": "edit_name"}],
+                    [{"text": "🆔 تصحیح کد ملی", "callback_data": "edit_national_id"}],
+                    [{"text": "📱 ارسال مجدد تلفن", "callback_data": "edit_phone"}]
+                ])
+            )
+            
+            # بازگرداندن کیبورد معمولی
+            self.send_message(chat_id, "🎉 ثبت‌نام شما تکمیل شد!",
+                reply_markup=self.build_reply_keyboard([
+                    ["شروع مجدد", "خروج"],
+                    ["پنل قرآن‌آموز"]
                 ])
             )
             
             # پاک کردن وضعیت
             if user_id in self.user_states:
                 del self.user_states[user_id]
+                logger.info(f"Registration completed for user {user_id}")
+        elif step == "phone" and not contact:
+            logger.warning(f"User {user_id} in phone step but no contact provided")
+            self.send_message(chat_id, "_📱 لطفاً شماره تلفن خود را با دکمه زیر ارسال کنید._",
+                reply_markup={
+                    "keyboard": [[{"text": "📱 ارسال شماره تلفن", "request_contact": True}]],
+                    "resize_keyboard": True
+                }
+            )
+        else:
+            logger.warning(f"Unknown step '{step}' for user {user_id}")
 
     def _handle_edit_name(self, chat_id: int, user_id: str):
         """ویرایش نام"""
@@ -349,6 +458,19 @@ class RegistrationModule:
             self.user_states[user_id] = {"step": "national_id"}
             self.send_message(chat_id, "_کد ملی جدید را وارد کنید._")
 
+    def _handle_edit_phone(self, chat_id: int, user_id: str):
+        """ویرایش شماره تلفن"""
+        if user_id in self.user_data:
+            self.user_data[user_id].pop("phone", None)
+            self.save_data(self.user_data)
+            self.user_states[user_id] = {"step": "phone"}
+            self.send_message(chat_id, "_📱 لطفاً شماره تلفن خود را با دکمه زیر ارسال کنید._",
+                reply_markup={
+                    "keyboard": [[{"text": "📱 ارسال شماره تلفن", "request_contact": True}]],
+                    "resize_keyboard": True
+                }
+            )
+
     def _handle_edit_info(self, chat_id: int, user_id: str):
         """ویرایش اطلاعات"""
         if user_id in self.user_data:
@@ -360,19 +482,105 @@ class RegistrationModule:
     def _handle_final_confirm(self, chat_id: int, user_id: str):
         """تأیید نهایی"""
         if user_id in self.user_data:
-            first_name = self.user_data[user_id]["first_name"]
-            self.send_message(chat_id, f"🎉 {first_name} عزیز، ثبت‌نام شما با موفقیت تکمیل شد! موفق باشید!")
+            try:
+                first_name = self.user_data[user_id].get("first_name", "کاربر")
+                full_name = self.user_data[user_id].get("full_name", "نامشخص")
+                national_id = self.user_data[user_id].get("national_id", "")
+                phone = self.user_data[user_id].get("phone", "")
+                
+                confirm_text = f"""🎉 **ثبت‌نام با موفقیت تکمیل شد!**
+
+🌟 {first_name} عزیز، ثبت‌نام شما با موفقیت انجام شد!
+
+📋 **اطلاعات ثبت‌نام:**
+• نام: {full_name}
+• کد ملی: {national_id}
+• تلفن: {phone}
+
+✅ حساب کاربری شما آماده است و می‌توانید از خدمات مدرسه استفاده کنید.
+
+حالا می‌توانید کلاس مورد نظر خود را انتخاب کنید:"""
+                
+                self.send_message(chat_id, confirm_text,
+                    reply_markup=self.build_reply_keyboard([
+                        ["📚 انتخاب کلاس"],
+                        ["پنل قرآن‌آموز"],
+                        ["شروع مجدد", "خروج"]
+                    ])
+                )
+            except Exception as e:
+                logger.error(f"Error in final_confirm for user {user_id}: {e}")
+                self.send_message(chat_id, "🎉 ثبت‌نام شما با موفقیت تکمیل شد!",
+                    reply_markup=self.build_reply_keyboard([
+                        ["شروع مجدد", "خروج"],
+                        ["پنل قرآن‌آموز"]
+                    ])
+                )
+
+    def _handle_complete_registration(self, chat_id: int, user_id: str):
+        """تکمیل ثبت‌نام ناقص"""
+        if not self.is_user_registered(user_id):
+            self._handle_registration_start(chat_id, user_id)
+            return
+        
+        missing_fields = self.get_missing_fields(user_id)
+        if not missing_fields:
+            # ثبت‌نام کامل است
+            self._handle_quran_student_panel(chat_id, user_id)
+            return
+        
+        # شروع از اولین فیلد ناقص
+        if "نام" in missing_fields:
+            self._handle_edit_name(chat_id, user_id)
+        elif "کد ملی" in missing_fields:
+            self._handle_edit_national_id(chat_id, user_id)
+        elif "تلفن" in missing_fields:
+            self._handle_edit_phone(chat_id, user_id)
 
     def _handle_quran_student_panel(self, chat_id: int, user_id: str):
         """پنل قرآن‌آموز"""
         if self.is_user_registered(user_id):
-            self.send_message(chat_id, "_📚 پنل قرآن‌آموز_\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-                reply_markup=self.build_reply_keyboard([
-                    ["📊 مشاهده لیست حضور و غیاب"],
-                    ["📈 آمار کلی"],
-                    ["🏠 برگشت به منو"]
-                ])
-            )
+            if self.is_registration_complete(user_id):
+                # ثبت‌نام کامل - نمایش پنل
+                user_info = self.user_data[user_id]
+                first_name = user_info.get("first_name", "کاربر")
+                
+                welcome_text = f"""📚 **پنل قرآن‌آموز**
+
+سلام {first_name} عزیز! 👋
+به پنل قرآن‌آموز خوش آمدید.
+
+لطفاً یکی از گزینه‌های زیر را انتخاب کنید:"""
+                
+                self.send_message(chat_id, welcome_text,
+                    reply_markup=self.build_reply_keyboard([
+                        ["📊 مشاهده لیست حضور و غیاب"],
+                        ["📈 آمار کلی"],
+                        ["🏠 برگشت به منو", "خروج"]
+                    ])
+                )
+            else:
+                # ثبت‌نام ناقص - نمایش گزینه‌های تکمیل
+                missing_fields = self.get_missing_fields(user_id)
+                missing_text = "، ".join(missing_fields)
+                
+                user_info = self.user_data[user_id]
+                first_name = user_info.get("first_name", "کاربر")
+                
+                warning_text = f"""⚠️ **ثبت‌نام ناقص**
+
+{first_name} عزیز، ثبت‌نام شما کامل نیست!
+فیلدهای ناقص: {missing_text}
+
+لطفاً ابتدا ثبت‌نام خود را تکمیل کنید."""
+                
+                self.send_message(chat_id, warning_text,
+                    reply_markup=self.build_inline_keyboard([
+                        [{"text": "✏️ تصحیح نام", "callback_data": "edit_name"}],
+                        [{"text": "🆔 تصحیح کد ملی", "callback_data": "edit_national_id"}],
+                        [{"text": "📱 تصحیح تلفن", "callback_data": "edit_phone"}]
+                    ])
+                )
         else:
             self.send_message(chat_id, "_❌ شما هنوز ثبت‌نام نکرده‌اید. لطفاً ابتدا ثبت‌نام کنید._",
                 reply_markup=self.build_reply_keyboard([
@@ -430,8 +638,21 @@ class RegistrationModule:
 
     def _validate_message_structure(self, message: Dict) -> bool:
         """اعتبارسنجی ساختار پیام"""
-        required_fields = ["chat", "from", "text"]
-        return all(field in message for field in required_fields)
+        required_fields = ["chat", "from"]
+        
+        # بررسی فیلدهای اجباری
+        if not all(field in message for field in required_fields):
+            return False
+        
+        # برای پیام‌های contact، text اختیاری است
+        if "contact" in message:
+            return True
+        
+        # برای سایر پیام‌ها، text اجباری است
+        if "text" not in message:
+            return False
+        
+        return True
 
     def _validate_callback_structure(self, callback: Dict) -> bool:
         """اعتبارسنجی ساختار callback"""

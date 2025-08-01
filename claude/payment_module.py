@@ -194,34 +194,61 @@ class PaymentModule:
 
     def handle_successful_payment(self, message: Dict):
         """پردازش پرداخت موفق"""
-        chat_id = message["chat"]["id"]
-        user_id = message["from"]["id"]
-        successful_payment = message.get("successful_payment", {})
-        
-        # دریافت اطلاعات کارگاه از وضعیت کاربر
-        workshop_id = self.user_states.get(f"payment_workshop_{user_id}")
-        workshop_data = None
-        
-        if self.kargah_module and workshop_id in self.kargah_module.workshops:
-            workshop_data = self.kargah_module.workshops[workshop_id]
-        
-        instructor_name = workshop_data.get('instructor_name', 'کارگاه') if workshop_data else 'کارگاه'
-        group_link = workshop_data.get('link', self.group_link) if workshop_data else self.group_link
-        
-        # ارسال پیام‌های موفقیت
-        self.send_message(chat_id, f"💸 پرداخت برای '{instructor_name}' با موفقیت انجام شد!", 
-                         reply_markup=self.build_reply_keyboard(["شروع", "خروج", "کلاس"]))
-        
-        self.send_message(chat_id, f"📎 لینک ورود به گروه: {group_link}", 
-                         reply_markup=self.build_reply_keyboard(["شروع", "خروج", "کلاس"]))
-        
-        self.send_message(chat_id, "🎉 از اینکه همراه شدید، بی‌نهایت سپاسگزاریم!", 
-                         reply_markup=self.build_reply_keyboard(["شروع", "خروج", "کلاس"]))
-        
-        # پاک کردن وضعیت
-        self.user_states[user_id] = "DONE"
-        if f"payment_workshop_{user_id}" in self.user_states:
-            del self.user_states[f"payment_workshop_{user_id}"]
+        try:
+            chat_id = message["chat"]["id"]
+            user_id = message["from"]["id"]
+            successful_payment = message.get("successful_payment", {})
+            
+            logger.info(f"Processing successful payment for user {user_id}: {successful_payment}")
+            
+            # دریافت اطلاعات کارگاه از وضعیت کاربر
+            workshop_id = self.user_states.get(f"payment_workshop_{user_id}")
+            workshop_data = None
+            
+            if self.kargah_module and workshop_id and workshop_id in self.kargah_module.workshops:
+                workshop_data = self.kargah_module.workshops[workshop_id]
+                logger.info(f"Found workshop data: {workshop_data}")
+            
+            instructor_name = workshop_data.get('instructor_name', 'کارگاه') if workshop_data else 'کارگاه'
+            group_link = workshop_data.get('link', self.group_link) if workshop_data else self.group_link
+            
+            # ارسال پیام‌های موفقیت
+            success_message = f"💸 پرداخت برای '{instructor_name}' با موفقیت انجام شد!"
+            logger.info(f"Sending success message: {success_message}")
+            
+            self.send_message(chat_id, success_message, 
+                             reply_markup=self.build_reply_keyboard(["شروع", "خروج", "کلاس"]))
+            
+            # ارسال لینک گروه
+            group_message = f"📎 لینک ورود به گروه: {group_link}"
+            logger.info(f"Sending group link: {group_message}")
+            
+            self.send_message(chat_id, group_message, 
+                             reply_markup=self.build_reply_keyboard(["شروع", "خروج", "کلاس"]))
+            
+            # ارسال پیام تشکر
+            thank_message = "🎉 از اینکه همراه شدید، بی‌نهایت سپاسگزاریم!"
+            logger.info(f"Sending thank you message: {thank_message}")
+            
+            self.send_message(chat_id, thank_message, 
+                             reply_markup=self.build_reply_keyboard(["شروع", "خروج", "کلاس"]))
+            
+            # پاک کردن وضعیت
+            self.user_states[user_id] = "DONE"
+            if f"payment_workshop_{user_id}" in self.user_states:
+                del self.user_states[f"payment_workshop_{user_id}"]
+            
+            logger.info(f"Payment processing completed for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Error in handle_successful_payment: {e}")
+            # ارسال پیام خطا به کاربر
+            try:
+                chat_id = message["chat"]["id"]
+                self.send_message(chat_id, "❌ خطا در پردازش پرداخت. لطفاً با پشتیبانی تماس بگیرید.",
+                                 reply_markup=self.build_reply_keyboard(["شروع", "خروج"]))
+            except:
+                pass
 
     def _handle_start_command(self, chat_id: int, user_id: int):
         """پردازش دستور شروع"""

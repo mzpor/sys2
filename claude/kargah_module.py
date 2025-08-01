@@ -215,6 +215,12 @@ class KargahModule:
         data = callback["data"]
         callback_query_id = callback["id"]
         
+        # بررسی callback های دانش‌آموزان (بدون نیاز به دسترسی ادمین)
+        if data.startswith("student_") or data == "student_back_to_menu":
+            self._route_callback(chat_id, message_id, user_id, data, callback_query_id)
+            return
+        
+        # برای سایر callback ها، بررسی دسترسی ادمین
         if not self.is_user_admin(user_id):
             self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
             return
@@ -236,23 +242,56 @@ class KargahModule:
         try:
             logger.info(f"Routing callback: {data}")
             
-            if data == "kargah_add":
+            # Callback های مربوط به دانش‌آموزان (بدون نیاز به دسترسی ادمین)
+            if data.startswith("student_select_workshop_"):
+                workshop_id = data.replace("student_select_workshop_", "")
+                self._handle_student_select_workshop(chat_id, message_id, user_id, workshop_id, callback_query_id)
+            elif data.startswith("student_pay_workshop_"):
+                workshop_id = data.replace("student_pay_workshop_", "")
+                self._handle_student_pay_workshop(chat_id, message_id, user_id, workshop_id, callback_query_id)
+            elif data == "student_back_to_workshops":
+                self._handle_student_back_to_workshops(chat_id, message_id, user_id, callback_query_id)
+            elif data == "student_back_to_menu":
+                self._handle_student_back_to_menu(chat_id, message_id, callback_query_id)
+            # Callback های مربوط به ادمین‌ها
+            elif data == "kargah_add":
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 self._handle_add_workshop(chat_id, message_id, user_id, callback_query_id)
             elif data == "kargah_back":
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 self._handle_back_to_main(chat_id, message_id, callback_query_id)
             elif data.startswith("kargah_view_"):
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 workshop_id = data.replace("kargah_view_", "")
                 self._handle_view_workshop(chat_id, message_id, workshop_id, callback_query_id)
             elif data.startswith("kargah_edit_instructor_"):
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 workshop_id = data.replace("kargah_edit_instructor_", "")
                 self._handle_edit_instructor(chat_id, message_id, user_id, workshop_id, callback_query_id)
             elif data.startswith("kargah_edit_cost_"):
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 workshop_id = data.replace("kargah_edit_cost_", "")
                 self._handle_edit_cost(chat_id, message_id, user_id, workshop_id, callback_query_id)
             elif data.startswith("kargah_edit_link_"):
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 workshop_id = data.replace("kargah_edit_link_", "")
                 self._handle_edit_link(chat_id, message_id, user_id, workshop_id, callback_query_id)
             elif data.startswith("kargah_delete_"):
+                if not self.is_user_admin(user_id):
+                    self.answer_callback_query(callback_query_id, "❌ شما دسترسی لازم را ندارید")
+                    return
                 workshop_id = data.replace("kargah_delete_", "")
                 self._handle_delete_workshop(chat_id, message_id, workshop_id, callback_query_id)
             else:
@@ -551,4 +590,153 @@ class KargahModule:
         text = "🏭 *مدیریت کارگاه‌ها*\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:"
         reply_markup = self.get_workshop_management_keyboard()
         self.edit_message(chat_id, message_id, text, reply_markup)
+        self.answer_callback_query(callback_query_id)
+
+    def show_workshops_for_student(self, chat_id: int, user_id: int):
+        """نمایش لیست کارگاه‌ها برای دانش‌آموز"""
+        if not self.workshops:
+            text = """📚 **انتخاب کلاس**
+
+❌ در حال حاضر هیچ کلاسی برای ثبت‌نام موجود نیست.
+لطفاً بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید."""
+            
+            self.send_message(chat_id, text,
+                reply_markup=self.build_reply_keyboard([
+                    ["🏠 بازگشت به منو", "خروج"]
+                ])
+            )
+        else:
+            text = """📚 **انتخاب کلاس**
+
+لطفاً یکی از کلاس‌های زیر را انتخاب کنید:"""
+            
+            # ساخت کیبورد برای انتخاب کارگاه
+            keyboard = []
+            for workshop_id, workshop in self.workshops.items():
+                instructor_name = workshop.get('instructor_name', 'نامشخص')
+                cost = workshop.get('cost', 'نامشخص')
+                keyboard.append([{
+                    "text": f"📚 {instructor_name} - {cost}",
+                    "callback_data": f"student_select_workshop_{workshop_id}"
+                }])
+            
+            keyboard.append([{"text": "🏠 بازگشت به منو", "callback_data": "student_back_to_menu"}])
+            
+            reply_markup = {"inline_keyboard": keyboard}
+            self.send_message(chat_id, text, reply_markup)
+
+    def build_reply_keyboard(self, buttons: List[List[str]]) -> Dict:
+        """ساخت کیبورد معمولی"""
+        return {
+            "keyboard": [[{"text": btn} for btn in row] for row in buttons],
+            "resize_keyboard": True
+        }
+
+    def _handle_student_select_workshop(self, chat_id: int, message_id: int, user_id: int, workshop_id: str, callback_query_id: str):
+        """پردازش انتخاب کارگاه توسط دانش‌آموز"""
+        if workshop_id not in self.workshops:
+            self.answer_callback_query(callback_query_id, "❌ کارگاه مورد نظر یافت نشد!")
+            return
+        
+        workshop = self.workshops[workshop_id]
+        instructor_name = workshop.get('instructor_name', 'نامشخص')
+        cost = workshop.get('cost', 'نامشخص')
+        link = workshop.get('link', 'نامشخص')
+        
+        text = f"""📚 **جزئیات کلاس انتخاب شده**
+
+🏭 **مربی:** {instructor_name}
+💰 **هزینه:** {cost}
+🔗 **لینک گروه:** {link}
+
+✅ شما این کلاس را انتخاب کرده‌اید.
+برای تکمیل ثبت‌نام، لطفاً روی دکمه پرداخت کلیک کنید."""
+        
+        keyboard = [
+            [{"text": "💳 پرداخت و ثبت‌نام", "callback_data": f"student_pay_workshop_{workshop_id}"}],
+            [{"text": "🔙 بازگشت به لیست کلاس‌ها", "callback_data": "student_back_to_workshops"}],
+            [{"text": "🏠 بازگشت به منو", "callback_data": "student_back_to_menu"}]
+        ]
+        
+        reply_markup = {"inline_keyboard": keyboard}
+        self.edit_message(chat_id, message_id, text, reply_markup)
+        self.answer_callback_query(callback_query_id)
+
+    def _handle_student_back_to_menu(self, chat_id: int, message_id: int, callback_query_id: str):
+        """بازگشت دانش‌آموز به منوی اصلی"""
+        text = """🏠 **بازگشت به منوی اصلی**
+
+لطفاً یکی از گزینه‌های زیر را انتخاب کنید:"""
+        
+        self.edit_message(chat_id, message_id, text,
+            reply_markup=self.build_reply_keyboard([
+                ["📚 انتخاب کلاس"],
+                ["📊 مشاهده لیست حضور و غیاب"],
+                ["📈 آمار کلی"],
+                ["🏠 برگشت به منو", "خروج"]
+            ])
+        )
+        self.answer_callback_query(callback_query_id)
+
+    def _handle_student_pay_workshop(self, chat_id: int, message_id: int, user_id: int, workshop_id: str, callback_query_id: str):
+        """پردازش پرداخت کارگاه توسط دانش‌آموز"""
+        if workshop_id not in self.workshops:
+            self.answer_callback_query(callback_query_id, "❌ کارگاه مورد نظر یافت نشد!")
+            return
+        
+        workshop = self.workshops[workshop_id]
+        instructor_name = workshop.get('instructor_name', 'نامشخص')
+        cost = workshop.get('cost', 'نامشخص')
+        
+        text = f"""💳 **پرداخت و ثبت‌نام**
+
+🏭 **کلاس انتخاب شده:** {instructor_name}
+💰 **هزینه:** {cost}
+
+برای تکمیل ثبت‌نام، لطفاً روی دکمه پرداخت کلیک کنید."""
+        
+        # اینجا باید به ماژول پرداخت ارسال شود
+        # فعلاً پیام ساده نمایش می‌دهیم
+        keyboard = [
+            [{"text": "💳 پرداخت", "callback_data": f"pay_workshop_{workshop_id}"}],
+            [{"text": "🔙 بازگشت", "callback_data": f"student_select_workshop_{workshop_id}"}]
+        ]
+        
+        reply_markup = {"inline_keyboard": keyboard}
+        self.edit_message(chat_id, message_id, text, reply_markup)
+        self.answer_callback_query(callback_query_id)
+
+    def _handle_student_back_to_workshops(self, chat_id: int, message_id: int, user_id: int, callback_query_id: str):
+        """بازگشت دانش‌آموز به لیست کارگاه‌ها"""
+        if not self.workshops:
+            text = """📚 **انتخاب کلاس**
+
+❌ در حال حاضر هیچ کلاسی برای ثبت‌نام موجود نیست.
+لطفاً بعداً دوباره تلاش کنید یا با مدیر تماس بگیرید."""
+            
+            self.edit_message(chat_id, message_id, text,
+                reply_markup=self.build_reply_keyboard([
+                    ["🏠 بازگشت به منو", "خروج"]
+                ])
+            )
+        else:
+            text = """📚 **انتخاب کلاس**
+
+لطفاً یکی از کلاس‌های زیر را انتخاب کنید:"""
+            
+            # ساخت کیبورد برای انتخاب کارگاه
+            keyboard = []
+            for workshop_id, workshop in self.workshops.items():
+                instructor_name = workshop.get('instructor_name', 'نامشخص')
+                cost = workshop.get('cost', 'نامشخص')
+                keyboard.append([{
+                    "text": f"📚 {instructor_name} - {cost}",
+                    "callback_data": f"student_select_workshop_{workshop_id}"
+                }])
+            
+            keyboard.append([{"text": "🏠 بازگشت به منو", "callback_data": "student_back_to_menu"}])
+            
+            reply_markup = {"inline_keyboard": keyboard}
+            self.edit_message(chat_id, message_id, text, reply_markup)
+        
         self.answer_callback_query(callback_query_id) 

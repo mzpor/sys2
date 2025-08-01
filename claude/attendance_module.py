@@ -483,12 +483,6 @@ class AttendanceModule:
             
             logger.info(f"Processing message from user {user_id}: {text[:50]}...")
 
-            # بررسی مجوز
-            if not self.is_user_authorized(user_id) and text not in ["/start", "/group"]:
-                logger.warning(f"Unauthorized access attempt from user {user_id}")
-                self.send_message(chat_id, "❌ شما اجازه دسترسی به این بات را ندارید!")
-                return
-
             # پردازش دستورات
             if text in ["/start", "شروع"]:
                 self._handle_start_command(chat_id, user_id)
