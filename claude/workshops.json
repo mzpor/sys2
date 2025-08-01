@@ -18,5 +18,15 @@
     "instructor_name": "آقای کاظمی",
     "cost": "10000 تومان",
     "link": "https://t.me/workshop4"
+  },
+  "05": {
+    "instructor_name": "زارع",
+    "cost": "1,000 تومان",
+    "link": "https://t.me/zare_group"
+  },
+  "06": {
+    "instructor_name": "محرابی",
+    "cost": "1,000 تومان",
+    "link": "https://t.me/ali_group"
   }
 }

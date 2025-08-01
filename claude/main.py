@@ -6,6 +6,7 @@ from attendance_module import AttendanceModule
 from group_management_module import GroupManagementModule
 from kargah_module import KargahModule
 from payment_module import PaymentModule
+from registration_module import RegistrationModule
 
 class AttendanceBot:
     def __init__(self):
@@ -13,6 +14,7 @@ class AttendanceBot:
         self.attendance_module = AttendanceModule(self.kargah_module)
         self.group_module = GroupManagementModule(self.attendance_module)
         self.payment_module = PaymentModule(self.kargah_module)
+        self.registration_module = RegistrationModule()
         self.last_update_id = 0
         print("AttendanceBot initialized")
 
@@ -50,20 +52,28 @@ class AttendanceBot:
                 # پردازش پیام‌های متنی
                 if "text" in message:
                     user_id = message["from"]["id"]
+                    text = message.get("text", "")
                     
-                    # ابتدا بررسی می‌کنیم که آیا کاربر در وضعیت payment هست
-                    if hasattr(self.payment_module, 'user_states') and user_id in self.payment_module.user_states:
+                    # ابتدا بررسی می‌کنیم که آیا کاربر در وضعیت registration هست
+                    if hasattr(self.registration_module, 'user_states') and str(user_id) in self.registration_module.user_states:
+                        self.registration_module.handle_message(message)
+                    # سپس بررسی می‌کنیم که آیا کاربر در وضعیت payment هست
+                    elif hasattr(self.payment_module, 'user_states') and user_id in self.payment_module.user_states:
                         self.payment_module.handle_message(message)
                     # سپس بررسی می‌کنیم که آیا کاربر در وضعیت kargah هست
                     elif hasattr(self.kargah_module, 'user_states') and user_id in self.kargah_module.user_states:
                         self.kargah_module.handle_message(message)
                     # سپس بررسی دستورات خاص
-                    elif message.get("text") == "/kargah":
+                    elif text == "/kargah":
                         self.kargah_module.handle_message(message)
-                    elif message.get("text") in ["/عضو", "/group"]:
+                    elif text in ["/عضو", "/group"]:
                         self.group_module.handle_message(message)
-                    elif message.get("text") == "/start":
-                        self.payment_module.handle_message(message)
+                    elif text == "/start":
+                        # برای کاربران غیر مدیر/مربی/کمک مربی، ابتدا registration_module را بررسی کن
+                        if not self.registration_module.is_admin_or_teacher(user_id):
+                            self.registration_module.handle_message(message)
+                        else:
+                            self.payment_module.handle_message(message)
                     else:
                         # سایر پیام‌ها به ماژول حضور و غیاب
                         self.attendance_module.handle_message(message)
@@ -73,6 +83,11 @@ class AttendanceBot:
                 data = callback["data"]
                 
                 # تشخیص اینکه callback متعلق به کدام ماژول است
+                registration_callbacks = [
+                    "start_registration", "edit_name", "edit_national_id", 
+                    "edit_info", "final_confirm", "quran_student_panel"
+                ]
+                
                 payment_callbacks = [
                     "pay_workshop_"
                 ]
@@ -89,11 +104,14 @@ class AttendanceBot:
                     "quick_attendance_group_", "statistics_group_", "clear_group_"
                 ]
                 
+                is_registration_callback = any(data == cb for cb in registration_callbacks)
                 is_payment_callback = any(data.startswith(cb) for cb in payment_callbacks)
                 is_kargah_callback = any(data.startswith(cb) for cb in kargah_callbacks)
                 is_group_callback = any(data.startswith(cb) for cb in group_callbacks)
                 
-                if is_payment_callback:
+                if is_registration_callback:
+                    self.registration_module.handle_callback(callback)
+                elif is_payment_callback:
                     self.payment_module.handle_callback(callback)
                 elif is_kargah_callback:
                     self.kargah_module.handle_callback(callback)
