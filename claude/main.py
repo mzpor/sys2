@@ -51,14 +51,19 @@ class AttendanceBot:
                 if "text" in message:
                     user_id = message["from"]["id"]
                     
-                    # ابتدا بررسی می‌کنیم که آیا کاربر در وضعیت kargah هست
-                    if hasattr(self.kargah_module, 'user_states') and user_id in self.kargah_module.user_states:
+                    # ابتدا بررسی می‌کنیم که آیا کاربر در وضعیت payment هست
+                    if hasattr(self.payment_module, 'user_states') and user_id in self.payment_module.user_states:
+                        self.payment_module.handle_message(message)
+                    # سپس بررسی می‌کنیم که آیا کاربر در وضعیت kargah هست
+                    elif hasattr(self.kargah_module, 'user_states') and user_id in self.kargah_module.user_states:
                         self.kargah_module.handle_message(message)
                     # سپس بررسی دستورات خاص
                     elif message.get("text") == "/kargah":
                         self.kargah_module.handle_message(message)
                     elif message.get("text") in ["/عضو", "/group"]:
                         self.group_module.handle_message(message)
+                    elif message.get("text") == "/start":
+                        self.payment_module.handle_message(message)
                     else:
                         # سایر پیام‌ها به ماژول حضور و غیاب
                         self.attendance_module.handle_message(message)
@@ -68,6 +73,10 @@ class AttendanceBot:
                 data = callback["data"]
                 
                 # تشخیص اینکه callback متعلق به کدام ماژول است
+                payment_callbacks = [
+                    "pay_workshop_"
+                ]
+                
                 kargah_callbacks = [
                     "kargah_list", "kargah_add", "kargah_edit", "kargah_back",
                     "kargah_view_", "kargah_edit_instructor_", "kargah_edit_cost_",
@@ -80,15 +89,24 @@ class AttendanceBot:
                     "quick_attendance_group_", "statistics_group_", "clear_group_"
                 ]
                 
+                is_payment_callback = any(data.startswith(cb) for cb in payment_callbacks)
                 is_kargah_callback = any(data.startswith(cb) for cb in kargah_callbacks)
                 is_group_callback = any(data.startswith(cb) for cb in group_callbacks)
                 
-                if is_kargah_callback:
+                if is_payment_callback:
+                    self.payment_module.handle_callback(callback)
+                elif is_kargah_callback:
                     self.kargah_module.handle_callback(callback)
                 elif is_group_callback:
                     self.group_module.handle_callback(callback)
                 else:
                     self.attendance_module.handle_callback(callback)
+            
+            elif "pre_checkout_query" in update:
+                self.payment_module.handle_pre_checkout_query(update["pre_checkout_query"])
+            
+            elif "message" in update and "successful_payment" in update["message"]:
+                self.payment_module.handle_successful_payment(update["message"])
         
         except Exception as e:
             print(f"Error processing update: {e}")
