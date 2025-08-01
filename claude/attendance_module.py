@@ -12,13 +12,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class AttendanceModule:
-    def __init__(self):
+    def __init__(self, kargah_module=None):
         self.users: List[int] = []
         self.attendance_data: Dict[int, str] = {}
         self.user_states: Dict[int, str] = {}
         self.current_group_id: Optional[int] = None
         self.user_names_cache: Dict[int, str] = {}
         self.group_names_cache: Dict[int, str] = {}
+        self.kargah_module = kargah_module
         
         # آیکون‌های وضعیت
         self.status_icons = {
@@ -383,15 +384,20 @@ class AttendanceModule:
         if not self.is_user_authorized(user_id):
             return {"inline_keyboard": [[{"text": "ℹ️ راهنما", "callback_data": "help"}]]}
         
-        return {
-            "inline_keyboard": [
-                [{"text": "👥 مدیریت گروه‌ها", "callback_data": "group_menu"}],
-                [{"text": "📊 مشاهده لیست حضور و غیاب", "callback_data": "view_attendance"}],
-                [{"text": "✏️ ثبت حضور و غیاب سریع", "callback_data": "quick_attendance"}],
-                [{"text": "🔄 پاک کردن داده‌ها", "callback_data": "clear_all"}],
-                [{"text": "📈 آمار کلی", "callback_data": "statistics"}]
-            ]
-        }
+        # منوی اصلی برای همه کاربران مجاز
+        keyboard = [
+            [{"text": "👥 مدیریت گروه‌ها", "callback_data": "group_menu"}],
+            [{"text": "📊 مشاهده لیست حضور و غیاب", "callback_data": "view_attendance"}],
+            [{"text": "✏️ ثبت حضور و غیاب سریع", "callback_data": "quick_attendance"}],
+            [{"text": "🔄 پاک کردن داده‌ها", "callback_data": "clear_all"}],
+            [{"text": "📈 آمار کلی", "callback_data": "statistics"}]
+        ]
+        
+        # اضافه کردن گزینه مدیریت کارگاه برای مدیران
+        if self.is_user_admin(user_id):
+            keyboard.append([{"text": "🏭 مدیریت کارگاه‌ها", "callback_data": "kargah_menu"}])
+        
+        return {"inline_keyboard": keyboard}
 
     def get_quick_attendance_keyboard(self) -> Dict[str, List]:
         """کیبورد ثبت سریع حضور و غیاب"""
@@ -893,6 +899,8 @@ class AttendanceModule:
                 self._handle_clear_all_callback(chat_id, message_id, callback_query_id)
             elif data == "statistics":
                 self._handle_statistics_callback(chat_id, message_id, callback_query_id)
+            elif data == "kargah_menu":
+                self._handle_kargah_menu_callback(chat_id, message_id, user_id, callback_query_id)
             else:
                 logger.warning(f"Unknown callback data: {data}")
                 self.answer_callback_query(callback_query_id, "❌ دستور نامعلوم!")
@@ -1101,6 +1109,14 @@ class AttendanceModule:
                 {"inline_keyboard": [[{"text": "🏠 بازگشت به منو", "callback_data": "main_menu"}]]}
             )
             self.answer_callback_query(callback_query_id, "❌ خطا در آمار!")
+
+    def _handle_kargah_menu_callback(self, chat_id: int, message_id: int, user_id: int, callback_query_id: str):
+        """مدیریت callback منوی کارگاه"""
+        # ارسال پیام به ماژول کارگاه
+        text = "🏭 *مدیریت کارگاه‌ها*\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:"
+        reply_markup = self.kargah_module.get_workshop_management_keyboard()
+        self.edit_message(chat_id, message_id, text, reply_markup)
+        self.answer_callback_query(callback_query_id)
 
     def set_users(self, users: List[int], group_id: Optional[int] = None):
         """تنظیم لیست کاربران با اعتبارسنجی"""

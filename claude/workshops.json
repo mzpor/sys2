@@ -1,0 +1,22 @@
+{
+  "01": {
+    "instructor_name": "آقای رشوند",
+    "cost": "500,000 تومان",
+    "link": "https://t.me/workshop1"
+  },
+  "02": {
+    "instructor_name": "آقای حتم خانی",
+    "cost": "10,000 تومان",
+    "link": "https://t.me/workshop2"
+  },
+  "03": {
+    "instructor_name": "آقای حاجی زاده",
+    "cost": "500,000 تومان",
+    "link": "https://t.me/workshop3"
+  },
+  "04": {
+    "instructor_name": "آقای کاظمی",
+    "cost": "10000 تومان",
+    "link": "https://t.me/workshop4"
+  }
+}
